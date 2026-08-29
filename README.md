@@ -5,7 +5,7 @@
 
 **OpenThink Agent** 是一个纯 API 接入的 AI 编程助手 CLI，MIT 协议开源。
 
-以 Claude Code 为基础架构，移除了账户登录与 OAuth 流程，只保留 API Key 认证。记忆文件采用通用的 **AGENT.md** 约定，便于接入各类开源 Agent 生态。
+以 CC 为基础架构，移除了账户登录与 OAuth 流程，只保留 API Key 认证。记忆文件采用通用的 **AGENT.md** 约定，便于接入各类开源 Agent 生态。
 
 ## 特性
 
