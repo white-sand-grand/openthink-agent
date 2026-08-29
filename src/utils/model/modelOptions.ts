@@ -35,7 +35,7 @@ export type ModelOption = {
  * There is deliberately no built-in vendor lineup — what models exist is
  * decided by the user's provider configuration, not by this file.
  */
-export function getModelOptions(_fastMode = false): ModelOption[] {
+export function getModelOptions(): ModelOption[] {
   const options: ModelOption[] = [getDefaultOption()]
   const seen = new Set<string>()
 

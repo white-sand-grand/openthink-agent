@@ -2,7 +2,6 @@ import type { BetaUsage as Usage } from '@anthropic-ai/sdk/resources/beta/messag
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { setHasUnknownModelCost } from '../bootstrap/state.js'
-import { isFastModeEnabled } from './fastMode.js'
 import {
   CLAUDE_3_5_HAIKU_CONFIG,
   CLAUDE_3_5_V2_SONNET_CONFIG,
@@ -59,14 +58,6 @@ export const COST_TIER_5_25 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
-// Fast mode pricing for Opus 4.6: $30 input / $150 output per Mtok
-export const COST_TIER_30_150 = {
-  inputTokens: 30,
-  outputTokens: 150,
-  promptCacheWriteTokens: 37.5,
-  promptCacheReadTokens: 3,
-  webSearchRequests: 0.01,
-} as const satisfies ModelCosts
 
 // Pricing for Haiku 3.5: $0.80 input / $4 output per Mtok
 export const COST_HAIKU_35 = {
@@ -91,10 +82,7 @@ const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
 /**
  * Get the cost tier for Opus 4.6 based on fast mode.
  */
-export function getOpus46CostTier(fastMode: boolean): ModelCosts {
-  if (isFastModeEnabled() && fastMode) {
-    return COST_TIER_30_150
-  }
+export function getOpus46CostTier(): ModelCosts {
   return COST_TIER_5_25
 }
 
@@ -148,8 +136,7 @@ export function getModelCosts(model: string, usage: Usage): ModelCosts {
   if (
     shortName === firstPartyNameToCanonical(CLAUDE_OPUS_4_6_CONFIG.firstParty)
   ) {
-    const isFastMode = usage.speed === 'fast'
-    return getOpus46CostTier(isFastMode)
+    return getOpus46CostTier()
   }
 
   const costs = MODEL_COSTS[shortName]

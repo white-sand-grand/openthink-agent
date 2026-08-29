@@ -123,7 +123,6 @@ import {
 import {
   getAfkModeHeaderLatched,
   getCacheEditingHeaderLatched,
-  getFastModeHeaderLatched,
   getLastApiCompletionTimestamp,
   getPromptCache1hAllowlist,
   getPromptCache1hEligible,
@@ -131,7 +130,6 @@ import {
   getThinkingClearLatched,
   setAfkModeHeaderLatched,
   setCacheEditingHeaderLatched,
-  setFastModeHeaderLatched,
   setLastMainRequestId,
   setPromptCache1hAllowlist,
   setPromptCache1hEligible,
@@ -142,7 +140,6 @@ import {
   CONTEXT_1M_BETA_HEADER,
   CONTEXT_MANAGEMENT_BETA_HEADER,
   EFFORT_BETA_HEADER,
-  FAST_MODE_BETA_HEADER,
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
@@ -174,12 +171,6 @@ import { getMaxThinkingTokensForModel } from 'src/utils/context.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { type EffortValue, modelSupportsEffort } from 'src/utils/effort.js'
-import {
-  isFastModeAvailable,
-  isFastModeCooldown,
-  isFastModeEnabled,
-  isFastModeSupportedByModel,
-} from 'src/utils/fastMode.js'
 import { returnValue } from 'src/utils/generators.js'
 import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js'
 import { isMcpInstructionsDeltaEnabled } from 'src/utils/mcpInstructionsDelta.js'
@@ -704,7 +695,6 @@ export type Options = {
   queryTracking?: QueryChainTracking
   agentId?: AgentId // Only set for subagents
   outputFormat?: BetaJSONOutputFormat
-  fastMode?: boolean
   advisorModel?: string
   addNotification?: (notif: Notification) => void
   // API-side task budget (output_config.task_budget). Distinct from the
@@ -833,8 +823,7 @@ export async function* executeNonStreamingRequest(
     model: string
     fallbackModel?: string
     thinkingConfig: ThinkingConfig
-    fastMode?: boolean
-    signal: AbortSignal
+      signal: AbortSignal
     initialConsecutive529Errors?: number
     querySource?: QuerySource
   },
@@ -906,7 +895,6 @@ export async function* executeNonStreamingRequest(
       model: retryOptions.model,
       fallbackModel: retryOptions.fallbackModel,
       thinkingConfig: retryOptions.thinkingConfig,
-      ...(isFastModeEnabled() && { fastMode: retryOptions.fastMode }),
       signal: retryOptions.signal,
       initialConsecutive529Errors: retryOptions.initialConsecutive529Errors,
       querySource: retryOptions.querySource,
@@ -1560,13 +1548,6 @@ async function* queryModel(
   }
   const allTools = [...toolSchemas, ...extraToolSchemas]
 
-  const isFastMode =
-    isFastModeEnabled() &&
-    isFastModeAvailable() &&
-    !isFastModeCooldown() &&
-    isFastModeSupportedByModel(options.model) &&
-    !!options.fastMode
-
   // Sticky-on latches for dynamic beta headers. Each header, once first
   // sent, keeps being sent for the rest of the session so mid-session
   // toggles don't change the server-side cache key and bust ~50-70K tokens.
@@ -1585,12 +1566,6 @@ async function* queryModel(
       afkHeaderLatched = true
       setAfkModeHeaderLatched(true)
     }
-  }
-
-  let fastModeHeaderLatched = getFastModeHeaderLatched() === true
-  if (!fastModeHeaderLatched && isFastMode) {
-    fastModeHeaderLatched = true
-    setFastModeHeaderLatched(true)
   }
 
   let cacheEditingHeaderLatched = getCacheEditingHeaderLatched() === true
@@ -1639,7 +1614,6 @@ async function* queryModel(
       querySource: options.querySource,
       model: options.model,
       agentId: options.agentId,
-      fastMode: fastModeHeaderLatched,
       globalCacheStrategy,
       betas,
       autoModeActive: afkHeaderLatched,
@@ -1664,7 +1638,6 @@ async function* queryModel(
     options.model,
     newContext,
     messagesForAPI,
-    isFastMode,
   )
 
   const startIncludingRetries = Date.now()
@@ -1804,23 +1777,6 @@ async function* queryModel(
     const enablePromptCaching =
       options.enablePromptCaching ?? getPromptCachingEnabled(retryContext.model)
 
-    // Fast mode: header is latched session-stable (cache-safe), but
-    // `speed='fast'` stays dynamic so cooldown still suppresses the actual
-    // fast-mode request without changing the cache key.
-    let speed: BetaMessageStreamParams['speed']
-    const isFastModeForRetry =
-      isFastModeEnabled() &&
-      isFastModeAvailable() &&
-      !isFastModeCooldown() &&
-      isFastModeSupportedByModel(options.model) &&
-      !!retryContext.fastMode
-    if (isFastModeForRetry) {
-      speed = 'fast'
-    }
-    if (fastModeHeaderLatched && !betasParams.includes(FAST_MODE_BETA_HEADER)) {
-      betasParams.push(FAST_MODE_BETA_HEADER)
-    }
-
     // AFK mode beta: latched once auto mode is first activated. Still gated
     // by isAgenticQuery per-call so classifiers/compaction don't get it.
     if (feature('TRANSCRIPT_CLASSIFIER')) {
@@ -1917,7 +1873,6 @@ async function* queryModel(
         queryTracking: options.queryTracking,
         thinkingType: logThinkingType,
         effortValue: logEffortValue,
-        fastMode: isFastMode,
         previousRequestId,
       })
     })
@@ -1935,7 +1890,6 @@ async function* queryModel(
   let maxOutputTokens = 0
   let responseHeaders: globalThis.Headers | undefined = undefined
   let research: unknown = undefined
-  let isFastModeRequest = isFastMode // Keep separate state as it may change if falling back
   let isAdvisorInProgress = false
 
   try {
@@ -1950,7 +1904,6 @@ async function* queryModel(
         }),
       async (anthropic, attempt, context) => {
         attemptNumber = attempt
-        isFastModeRequest = context.fastMode ?? false
         start = Date.now()
         attemptStartTimes.push(start)
         // Client has been created by withRetry's getClient() call. This fires
@@ -2004,7 +1957,6 @@ async function* queryModel(
         model: options.model,
         fallbackModel: options.fallbackModel,
         thinkingConfig,
-        ...(isFastModeEnabled() ? { fastMode: isFastMode } : false),
         signal,
         querySource: options.querySource,
       },
@@ -2719,7 +2671,6 @@ async function* queryModel(
           model: options.model,
           fallbackModel: options.fallbackModel,
           thinkingConfig,
-          ...(isFastModeEnabled() && { fastMode: isFastMode }),
           signal,
           initialConsecutive529Errors: is529Error(streamingError) ? 1 : 0,
           querySource: options.querySource,
@@ -2818,8 +2769,7 @@ async function* queryModel(
             model: options.model,
             fallbackModel: options.fallbackModel,
             thinkingConfig,
-            ...(isFastModeEnabled() && { fastMode: isFastMode }),
-            signal,
+              signal,
           },
           paramsFromContext,
           (attempt, _startTime, tokens) => {
@@ -2896,7 +2846,6 @@ async function* queryModel(
           queryTracking: options.queryTracking,
           querySource: options.querySource,
           llmSpan,
-          fastMode: isFastModeRequest,
           previousRequestId,
         })
 
@@ -2952,7 +2901,6 @@ async function* queryModel(
         queryTracking: options.queryTracking,
         querySource: options.querySource,
         llmSpan,
-        fastMode: isFastModeRequest,
         previousRequestId,
       })
 
@@ -3046,7 +2994,6 @@ async function* queryModel(
       globalCacheStrategy,
       requestSetupMs: start - startIncludingRetries,
       attemptStartTimes,
-      fastMode: isFastModeRequest,
       previousRequestId,
       betas: lastRequestBetas,
     })
