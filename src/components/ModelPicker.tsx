@@ -3,7 +3,6 @@ import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeCooldown, isFastModeEnabled } from 'src/utils/fastMode.js';
 import { Box, Text } from '../ink.js';
 import { useKeybindings } from '../keybindings/useKeybinding.js';
 import { useAppState, useSetAppState } from '../state/AppState.js';
@@ -24,7 +23,6 @@ export type Props = {
   onSelect: (model: string | null, effort: EffortLevel | undefined) => void;
   onCancel?: () => void;
   isStandaloneCommand?: boolean;
-  showFastModeNotice?: boolean;
   /** Overrides the dim header line below "Select model". */
   headerText?: string;
   /**
@@ -44,7 +42,6 @@ export function ModelPicker(t0) {
     onSelect,
     onCancel,
     isStandaloneCommand,
-    showFastModeNotice,
     headerText,
     skipSettingsWrite
   } = t0;
@@ -53,12 +50,11 @@ export function ModelPicker(t0) {
   const initialValue = initial === null ? NO_PREFERENCE : initial;
   const [focusedValue, setFocusedValue] = useState(initialValue);
   const [view, setView] = useState('models');
-  const isFastMode = useAppState(_temp);
   const [hasToggledEffort, setHasToggledEffort] = useState(false);
   const effortValue = useAppState(_temp2);
   const initialEffort = effortValue !== undefined ? convertEffortValueToLevel(effortValue) : undefined;
   const [effort, setEffortState] = useState<EffortLevel | undefined>(initialEffort);
-  const modelOptions = useMemo(() => getModelOptions(isFastMode ?? false), [isFastMode]);
+  const modelOptions = useMemo(() => getModelOptions(), []);
 
   // Ensure the initial value is in the options list. This handles edge cases
   // where the user's current model (e.g., 'haiku' for 3P users) is not in the
@@ -170,11 +166,7 @@ export function ModelPicker(t0) {
             {focusedSupportsEffort ? <Text dimColor><EffortLevelIndicator effort={displayEffort} />{" "}{capitalize(displayEffort)} effort{displayEffort === focusedDefaultEffort ? " (default)" : ""}{" "}<Text color="subtle">← → to adjust</Text></Text> : <Text color="subtle"><EffortLevelIndicator effort={undefined} /> Effort not supported{focusedModelName ? ` for ${focusedModelName}` : ""}</Text>}
           </Box>}
 
-        {view === 'models' && (isFastModeEnabled() ? showFastModeNotice ? <Box marginBottom={1}>
-              <Text dimColor>Fast mode is <Text bold>ON</Text> and available with{" "}{FAST_MODE_MODEL_DISPLAY} only (/fast). Switching to other models turn off fast mode.</Text>
-            </Box> : isFastModeAvailable() && !isFastModeCooldown() ? <Box marginBottom={1}>
-              <Text dimColor>Use <Text bold>/fast</Text> to turn on Fast mode ({FAST_MODE_MODEL_DISPLAY} only).</Text>
-            </Box> : null : null)}
+
       </Box>
 
       {isStandaloneCommand && <Text dimColor italic>{exitState.pending ? <>Press {exitState.keyName} again to exit</> : <Byline><KeyboardShortcutHint shortcut="Enter" action="confirm" /><ConfigurableShortcutHint action="select:cancel" context="Select" fallback="Esc" description="exit" /></Byline>}</Text>}
@@ -183,9 +175,6 @@ export function ModelPicker(t0) {
     return content;
   }
   return <Pane color="permission">{content}</Pane>;
-}
-function _temp(s) {
-  return isFastModeEnabled() ? s.fastMode : false;
 }
 function _temp2(s) {
   return s.effortValue;

@@ -13,6 +13,7 @@ import {
 import { getUserAgent } from 'src/utils/http.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { getActiveProviderOverride } from 'src/utils/model/apiProviders.js'
+import { getSlotProviderOverrideForModel } from 'src/utils/model/slots.js'
 import { createOpenAiCompatClient } from './openaiCompat.js'
 import {
   getAPIProvider,
@@ -304,7 +305,16 @@ export async function getAnthropicClient({
   // Messages internally); Anthropic-format endpoints use the native SDK with
   // the provider's base URL and key. OAuth tokens must NOT leak to the
   // provider either way.
-  const providerOverride = getActiveProviderOverride()
+  // A slot that pins its own provider (model slots) wins for that slot's
+  // model — this is how Architect/Artisan/Seer/Clerk can live on different
+  // vendors; everything else follows the globally active provider.
+  const slotOverride = model ? getSlotProviderOverrideForModel(model) : null
+  if (slotOverride) {
+    logForDebugging(
+      `[slot:${slotOverride.slot}] model=${model} -> provider ${slotOverride.id} (${slotOverride.protocol})`,
+    )
+  }
+  const providerOverride = slotOverride ?? getActiveProviderOverride()
   if (providerOverride && providerOverride.protocol === 'openai') {
     logForDebugging(
       `[API:provider] routing via OpenAI-compatible provider '${providerOverride.id}' -> ${providerOverride.baseUrl}`,

@@ -30,6 +30,7 @@ import {
 } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getSlotErrorContext } from 'src/utils/model/slots.js'
 import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
 import {
   API_PDF_MAX_PAGES,
@@ -423,6 +424,34 @@ export function extractUnknownErrorFormat(value: unknown): string | undefined {
 }
 
 export function getAssistantMessageFromError(
+  error: unknown,
+  model: string,
+  options?: {
+    messages?: Message[]
+    messagesForAPI?: (UserMessage | AssistantMessage)[]
+  },
+): AssistantMessage {
+  const message = getAssistantMessageFromErrorInner(error, model, options)
+  // Slot routing: tell the user which slot's provider produced this error
+  const slotContext = getSlotErrorContext(model)
+  if (
+    slotContext &&
+    typeof message.message.content === 'string' &&
+    !message.message.content.includes(slotContext)
+  ) {
+    return {
+      ...message,
+      message: {
+        ...message.message,
+        content: `${message.message.content}
+(请求来自 ${slotContext}，可运行 /provider 检查该槽配置)`,
+      },
+    }
+  }
+  return message
+}
+
+function getAssistantMessageFromErrorInner(
   error: unknown,
   model: string,
   options?: {

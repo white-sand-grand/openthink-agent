@@ -3,14 +3,14 @@ import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Box } from '../../ink.js';
 import { getInitialSettings } from '../../utils/settings/settings.js';
-import { Clawd, type ClawdPose } from './Clawd.js';
+import { Shrimp, type ShrimpPose } from './Shrimp.js';
 type Frame = {
-  pose: ClawdPose;
+  pose: ShrimpPose;
   offset: number;
 };
 
 /** Hold a pose for n frames (60ms each). */
-function hold(pose: ClawdPose, offset: number, frames: number): Frame[] {
+function hold(pose: ShrimpPose, offset: number, frames: number): Frame[] {
   return Array.from({
     length: frames
   }, () => ({
@@ -21,7 +21,7 @@ function hold(pose: ClawdPose, offset: number, frames: number): Frame[] {
 
 // Offset semantics: marginTop in a fixed-height-3 container. 0 = normal,
 // 1 = crouched. Container height stays 3 so the layout never shifts; during
-// a crouch (offset=1) Clawd's feet row dips below the container and gets
+// a crouch (offset=1) Shrimp's feet row dips below the container and gets
 // clipped — reads as "ducking below the frame" before springing back up.
 
 // Click animation: crouch, then spring up with both arms raised. Twice.
@@ -44,26 +44,26 @@ const IDLE: Frame = {
 };
 const FRAME_MS = 60;
 const incrementFrame = (i: number) => i + 1;
-const CLAWD_HEIGHT = 3;
+const MASCOT_HEIGHT = 3;
 
 /**
- * Clawd with click-triggered animations (crouch-jump with arms up, or
- * look-around). Container height is fixed at CLAWD_HEIGHT — same footprint
- * as a bare `<Clawd />` — so the surrounding layout never shifts. During a
+ * Shrimp with click-triggered animations (crouch-jump with arms up, or
+ * look-around). Container height is fixed at MASCOT_HEIGHT — same footprint
+ * as a bare `<Shrimp />` — so the surrounding layout never shifts. During a
  * crouch only the feet row clips (see comment above). Click only fires when
  * mouse tracking is enabled (i.e. inside `<AlternateScreen>` / fullscreen);
- * elsewhere this renders and behaves identically to plain `<Clawd />`.
+ * elsewhere this renders and behaves identically to plain `<Shrimp />`.
  */
-export function AnimatedClawd() {
+export function AnimatedShrimp() {
   const $ = _c(8);
   const {
     pose,
     bounceOffset,
     onClick
-  } = useClawdAnimation();
+  } = useShrimpAnimation();
   let t0;
   if ($[0] !== pose) {
-    t0 = <Clawd pose={pose} />;
+    t0 = <Shrimp pose={pose} />;
     $[0] = pose;
     $[1] = t0;
   } else {
@@ -80,7 +80,7 @@ export function AnimatedClawd() {
   }
   let t2;
   if ($[5] !== onClick || $[6] !== t1) {
-    t2 = <Box height={CLAWD_HEIGHT} flexDirection="column" onClick={onClick}>{t1}</Box>;
+    t2 = <Box height={MASCOT_HEIGHT} flexDirection="column" onClick={onClick}>{t1}</Box>;
     $[5] = onClick;
     $[6] = t1;
     $[7] = t2;
@@ -89,8 +89,8 @@ export function AnimatedClawd() {
   }
   return t2;
 }
-function useClawdAnimation(): {
-  pose: ClawdPose;
+function useShrimpAnimation(): {
+  pose: ShrimpPose;
   bounceOffset: number;
   onClick: () => void;
 } {

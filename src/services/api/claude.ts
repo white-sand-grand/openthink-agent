@@ -83,11 +83,18 @@ import {
   stripToolReferenceBlocksFromUserMessage,
 } from '../../utils/messages.js'
 import {
+  getDefaultArchitectModel,
   getDefaultOpusModel,
   getDefaultSonnetModel,
+  getMarketingNameForModel,
   getSmallFastModel,
   isNonCustomOpusModel,
 } from '../../utils/model/model.js'
+import {
+  MODEL_SLOTS,
+  getSlotConfig,
+  getSlotResolvedModel,
+} from '../../utils/model/slots.js'
 import {
   asSystemPrompt,
   type SystemPrompt,
@@ -200,6 +207,7 @@ import { insertBlockAfterToolResults } from '../../utils/contentArray.js'
 import { validateBoundedIntEnvVar } from '../../utils/envValidation.js'
 import { safeParseJSON } from '../../utils/json.js'
 import { getInferenceProfileBackingModel } from '../../utils/model/bedrock.js'
+import { getSettings_DEPRECATED } from '../../utils/settings/settings.js'
 import {
   normalizeModelStringForAPI,
   parseUserSpecifiedModel,
@@ -1014,6 +1022,158 @@ export function stripExcessMediaItems(
   }) as (UserMessage | AssistantMessage)[]
 }
 
+// --- Seer vision relay -----------------------------------------------------
+// When the model cannot accept images (per slot `supportsVision`
+// declarations — undeclared or unknown models are treated as vision-less),
+// image blocks are described by the Seer slot and replaced with the
+// description, so the whole conversation stays text-only. Descriptions are
+// cached per image content for the session; the Seer call itself is exempt
+// from the relay to avoid recursion.
+
+const SEER_INSTRUCTION =
+  '你是视觉转述助手。请完整、忠实、结构化地描述这张图片中与编程工作相关的全部信息：' +
+  '界面/终端文本、代码、报错信息、图表结构与数据、布局关系等。' +
+  '你的描述将作为图片的唯一替代呈给一个看不到图片的模型。'
+
+const seerDescriptionCache = new Map<string, string>()
+const SEER_DESCRIPTION_CACHE_MAX = 50
+
+export function isVisionRelayEnabled(): boolean {
+  return (getSettings_DEPRECATED()?.visionRelay ?? true) === true
+}
+
+function isImageContentBlock(block: unknown): boolean {
+  return (
+    typeof block === 'object' &&
+    block !== null &&
+    (block as { type?: string }).type === 'image'
+  )
+}
+
+function imageCacheKey(block: {
+  source?: { type?: string; data?: string; url?: string }
+}): string {
+  const source = block.source
+  if (source?.type === 'base64' && source.data) {
+    return `b64:${source.data.slice(0, 256)}:${source.data.length}`
+  }
+  if (source?.url) return `url:${source.url}`
+  return JSON.stringify(block).slice(0, 256)
+}
+
+function modelCanSeeImages(model: string): boolean {
+  // A slot declaring supportsVision for this model wins.
+  for (const def of MODEL_SLOTS) {
+    const cfg = getSlotConfig(def.id)
+    if (cfg?.model === model) return cfg.supportsVision === true
+  }
+  // Built-in Claude family defaults have vision.
+  return getMarketingNameForModel(model) !== undefined
+}
+
+export async function maybeRelayImagesThroughSeer(
+  messages: Message[],
+  signal: AbortSignal,
+  model: string,
+): Promise<Message[]> {
+  if (!isVisionRelayEnabled()) return messages
+  if (modelCanSeeImages(model)) return messages
+  const seerModel = getSlotResolvedModel('seer') ?? getDefaultSonnetModel()
+  if (!seerModel || seerModel === model) return messages
+
+  let relayed = false
+  const out: Message[] = []
+  for (const message of messages) {
+    if (message.type !== 'user') {
+      out.push(message)
+      continue
+    }
+    const content = message.message.content
+    if (!Array.isArray(content) || !content.some(isImageContentBlock)) {
+      out.push(message)
+      continue
+    }
+    const newContent: unknown[] = []
+    for (const block of content) {
+      if (!isImageContentBlock(block)) {
+        newContent.push(block)
+        continue
+      }
+      try {
+        const description = await describeImageWithSeer(
+          block as { source?: { data?: string; url?: string } },
+          seerModel,
+          signal,
+        )
+        newContent.push({ type: 'text', text: `[Seer 图像转述] ${description}` })
+      } catch (error) {
+        // A relay failure must never break the turn — keep the original
+        // block and let the API decide.
+        logError(error instanceof Error ? error : new Error(String(error)))
+        newContent.push(block)
+      }
+    }
+    relayed = true
+    out.push({
+      ...message,
+      message: { ...message.message, content: newContent },
+    } as Message)
+  }
+  return relayed ? out : messages
+}
+
+async function describeImageWithSeer(
+  block: { source?: { data?: string; url?: string } },
+  seerModel: string,
+  signal: AbortSignal,
+): Promise<string> {
+  const cacheKey = imageCacheKey(block)
+  const cached = seerDescriptionCache.get(cacheKey)
+  if (cached) return cached
+
+  const result = await queryModelWithoutStreaming({
+    messages: [
+      createUserMessage({
+        content: [
+          { type: 'text', text: SEER_INSTRUCTION },
+          block as unknown as BetaImageBlockParam,
+        ],
+      }),
+    ],
+    systemPrompt: asSystemPrompt([]),
+    thinkingConfig: { type: 'disabled' },
+    tools: [],
+    signal,
+    options: {
+      model: seerModel,
+      querySource: 'vision_relay',
+      enablePromptCaching: false,
+      async getToolPermissionContext() {
+        return getEmptyToolPermissionContext()
+      },
+    },
+  } as Parameters<typeof queryModelWithoutStreaming>[0])
+
+  const content = result.message.content
+  const text = Array.isArray(content)
+    ? content
+        .filter(
+          (b): b is { type: 'text'; text: string } =>
+            typeof b === 'object' && b !== null && b.type === 'text',
+        )
+        .map(b => b.text)
+        .join('\n')
+    : ''
+  const description = text.trim() || '(图像，无可用描述)'
+
+  if (seerDescriptionCache.size >= SEER_DESCRIPTION_CACHE_MAX) {
+    const first = seerDescriptionCache.keys().next().value
+    if (first !== undefined) seerDescriptionCache.delete(first)
+  }
+  seerDescriptionCache.set(cacheKey, description)
+  return description
+}
+
 async function* queryModel(
   messages: Message[],
   systemPrompt: SystemPrompt,
@@ -1025,6 +1185,11 @@ async function* queryModel(
   StreamEvent | AssistantMessage | SystemAPIErrorMessage,
   void
 > {
+  // Seer relay: when the model can't accept images (undeclared or unknown
+  // vision capability), image blocks are replaced with Seer's description
+  // (session-cached) so the conversation stays text-only end to end.
+  messages = await maybeRelayImagesThroughSeer(messages, signal, options.model)
+
   // Check cheap conditions first — the off-switch await blocks on GrowthBook
   // init (~10ms). For non-Opus models (haiku, sonnet) this skips the await
   // entirely. Subscribers don't hit this path at all.

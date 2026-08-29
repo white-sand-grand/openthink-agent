@@ -37,6 +37,26 @@ export const EnvironmentVariablesSchema = lazySchema(() =>
 )
 
 /**
+ * Schema for a single model slot (Architect/Artisan/Seer/Clerk)
+ */
+export const SlotConfigSchema = lazySchema(() =>
+  z.object({
+    provider: z
+      .string()
+      .optional()
+      .describe('Provider id from the /provider registry; unset follows the active provider'),
+    model: z
+      .string()
+      .optional()
+      .describe('Model id served by this slot'),
+    supportsVision: z
+      .boolean()
+      .optional()
+      .describe('Declares that this slot model accepts image input'),
+  }),
+)
+
+/**
  * Schema for permissions section
  */
 export const PermissionsSchema = lazySchema(() =>
@@ -376,11 +396,28 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe('Override the default model used by OpenThink'),
+      modelSlots: z
+        .object({
+          architect: SlotConfigSchema().optional(),
+          artisan: SlotConfigSchema().optional(),
+          seer: SlotConfigSchema().optional(),
+          clerk: SlotConfigSchema().optional(),
+        })
+        .optional()
+        .describe(
+          'Role-based model slots (Architect/Artisan/Seer/Clerk). Each slot binds a provider + model; unconfigured slots fall back to legacy env vars and the built-in defaults.',
+        ),
       apiProvider: z
         .string()
         .optional()
         .describe(
           'Active third-party API provider id (managed by /provider). When set, requests go to that provider instead of the default Anthropic endpoint.',
+        ),
+      visionRelay: z
+        .boolean()
+        .optional()
+        .describe(
+          'Automatically relay images through the Seer slot with a text description when the main model cannot see them (default: true)',
         ),
       apiProviders: z
         .record(

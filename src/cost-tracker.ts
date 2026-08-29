@@ -174,6 +174,19 @@ export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
   }))
 }
 
+function getSlotDisplayName(model: string): string | undefined {
+  try {
+    // Lazy require to avoid import cycle with settings/model stack.
+    const slots = require('./utils/model/slots.js') as typeof import('./utils/model/slots.js')
+    for (const def of slots.MODEL_SLOTS) {
+      if (slots.getSlotConfig(def.id)?.model === model) {
+        return `${def.name} · ${def.label} 槽`
+      }
+    }
+  } catch {}
+  return undefined
+}
+
 function formatCost(cost: number, maxDecimalPlaces: number = 4): string {
   return `$${cost > 0.5 ? round(cost, 100).toFixed(2) : cost.toFixed(maxDecimalPlaces)}`
 }
@@ -187,7 +200,9 @@ function formatModelUsage(): string {
   // Accumulate usage by short name
   const usageByShortName: { [shortName: string]: ModelUsage } = {}
   for (const [model, usage] of Object.entries(modelUsageMap)) {
-    const shortName = getCanonicalName(model)
+    // Slot-configured models are grouped under their role slot name;
+    // everything else falls back to the canonical family short name.
+    const shortName = getSlotDisplayName(model) ?? getCanonicalName(model)
     if (!usageByShortName[shortName]) {
       usageByShortName[shortName] = {
         inputTokens: 0,

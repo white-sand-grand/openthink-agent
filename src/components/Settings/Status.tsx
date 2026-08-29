@@ -9,6 +9,8 @@ import { Box, Text, useTheme } from '../../ink.js';
 import { type AppState, useAppState } from '../../state/AppState.js';
 import { getCwd } from '../../utils/cwd.js';
 import { getCurrentSessionTitle } from '../../utils/sessionStorage.js';
+import { MODEL_SLOTS, getSlotConfig } from '../../utils/model/slots.js';
+import { getActiveProviderId, getProviderEntry } from '../../utils/model/apiProviders.js';
 import { buildAccountProperties, buildAPIProviderProperties, buildIDEProperties, buildInstallationDiagnostics, buildInstallationHealthDiagnostics, buildMcpProperties, buildMemoryDiagnostics, buildSandboxProperties, buildSettingSourcesProperties, type Diagnostic, getModelDisplayLabel, type Property } from '../../utils/status.js';
 import type { ThemeName } from '../../utils/theme.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
@@ -49,10 +51,29 @@ function buildSecondarySection({
   return [{
     label: 'Model',
     value: modelLabel
-  }, ...buildIDEProperties(mcp.clients, context.options.ideInstallationStatus, theme), ...buildMcpProperties(mcp.clients, theme), ...buildSandboxProperties(), ...buildSettingSourcesProperties()];
+  }, ...buildSlotProperties(), ...buildIDEProperties(mcp.clients, context.options.ideInstallationStatus, theme), ...buildMcpProperties(mcp.clients, theme), ...buildSandboxProperties(), ...buildSettingSourcesProperties()];
 }
 export async function buildDiagnostics(): Promise<Diagnostic[]> {
   return [...(await buildInstallationDiagnostics()), ...(await buildInstallationHealthDiagnostics()), ...(await buildMemoryDiagnostics())];
+}
+
+function buildSlotProperties(): Property[] {
+  const activeId = getActiveProviderId();
+  return MODEL_SLOTS.map(def => {
+    const cfg = getSlotConfig(def.id);
+    if (!cfg?.model && !cfg?.provider) {
+      return {
+        label: `Slot ${def.name}(${def.label})`,
+        value: `未配置 — 回落默认模型链 · ${def.description}`,
+      };
+    }
+    const providerId = cfg.provider ?? activeId;
+    const providerName = providerId ? (getProviderEntry(providerId)?.name ?? providerId) : '默认';
+    return {
+      label: `Slot ${def.name}(${def.label})`,
+      value: `${cfg.model ?? '(回落默认)'} @ ${providerName}${cfg.supportsVision ? ' · 视觉' : ''}`,
+    };
+  });
 }
 function PropertyValue(t0) {
   const $ = _c(8);

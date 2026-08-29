@@ -1475,7 +1475,7 @@ export function Config({
       }} onCancel={() => {
         setShowSubmenu(null);
         setTabsHidden(false);
-      }} showFastModeNotice={isFastModeEnabled() ? isFastMode && isFastModeSupportedByModel(mainLoopModel) && isFastModeAvailable() : false} />
+      }} />
           <Text dimColor>
             <Byline>
               <KeyboardShortcutHint shortcut="Enter" action="confirm" />

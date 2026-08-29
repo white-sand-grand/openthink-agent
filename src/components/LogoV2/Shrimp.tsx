@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { Box, Text } from '../../ink.js';
 import { env } from '../../utils/env.js';
-export type ClawdPose = 'default' | 'arms-up' // tail fan flicked up (used during jump)
+export type ShrimpPose = 'default' | 'arms-up' // tail fan flicked up (used during jump)
 | 'look-left' // eye shifted left
 | 'look-right'; // eye shifted right
 
 type Props = {
-  pose?: ClawdPose;
+  pose?: ShrimpPose;
 };
 
 // Shrimp mascot. Standard-terminal pose fragments. Each row is split into
@@ -40,7 +40,7 @@ type Segments = {
   /** row 3 (no bg): legs + fan tip */
   r3: string;
 };
-const POSES: Record<ClawdPose, Segments> = {
+const POSES: Record<ShrimpPose, Segments> = {
   default: {
     r1L: '▘▘ ',
     r1E: '▟▛████▙',
@@ -81,55 +81,55 @@ const POSES: Record<ClawdPose, Segments> = {
 
 // Apple Terminal uses a bg-fill trick (see below), so only eye poses make
 // sense. Tail poses fall back to default.
-const APPLE_EYES: Record<ClawdPose, string> = {
+const APPLE_EYES: Record<ShrimpPose, string> = {
   default: ' ▗   ▖ ',
   'look-left': ' ▘   ▘ ',
   'look-right': ' ▝   ▝ ',
   'arms-up': ' ▗   ▖ '
 };
-export function Clawd(t0) {
+export function Shrimp(t0) {
   const {
     pose = 'default'
   } = t0 ?? {};
   if (env.terminal === 'Apple_Terminal') {
-    return <AppleTerminalClawd pose={pose} />;
+    return <AppleTerminalShrimp pose={pose} />;
   }
   const p = POSES[pose];
   return <Box flexDirection="column">
       <Text>
-        <Text color="clawd_body">{p.r1L}</Text>
-        <Text color="clawd_body" backgroundColor="clawd_background">
+        <Text color="mascot_body">{p.r1L}</Text>
+        <Text color="mascot_body" backgroundColor="mascot_background">
           {p.r1E}
         </Text>
-        <Text color="clawd_body">{p.r1R}</Text>
+        <Text color="mascot_body">{p.r1R}</Text>
       </Text>
       <Text>
-        <Text color="clawd_body">{p.r2L}</Text>
-        <Text color="clawd_body" backgroundColor="clawd_background">
+        <Text color="mascot_body">{p.r2L}</Text>
+        <Text color="mascot_body" backgroundColor="mascot_background">
           {p.r2E}
         </Text>
-        <Text color="clawd_body">{p.r2R}</Text>
+        <Text color="mascot_body">{p.r2R}</Text>
       </Text>
-      <Text color="clawd_body">{p.r3}</Text>
+      <Text color="mascot_body">{p.r3}</Text>
     </Box>;
 }
-function AppleTerminalClawd({
+function AppleTerminalShrimp({
   pose
 }: {
-  pose: ClawdPose;
+  pose: ShrimpPose;
 }): React.ReactNode {
   // Apple's Terminal renders vertical space between chars by default.
   // It does NOT render vertical space between background colors
   // so we use background color to draw the main shape.
   return <Box flexDirection="column" alignItems="center">
       <Text>
-        <Text color="clawd_body">▗</Text>
-        <Text color="clawd_background" backgroundColor="clawd_body">
+        <Text color="mascot_body">▗</Text>
+        <Text color="mascot_background" backgroundColor="mascot_body">
           {APPLE_EYES[pose]}
         </Text>
-        <Text color="clawd_body">▖</Text>
+        <Text color="mascot_body">▖</Text>
       </Text>
-      <Text backgroundColor="clawd_body">{" ".repeat(7)}</Text>
-      <Text color="clawd_body">▝▘ ▘▘▞</Text>
+      <Text backgroundColor="mascot_body">{" ".repeat(7)}</Text>
+      <Text color="mascot_body">▝▘ ▘▘▞</Text>
     </Box>;
 }

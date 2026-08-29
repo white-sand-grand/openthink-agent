@@ -20,6 +20,7 @@ import {
 } from '../context.js'
 import { isEnvTruthy } from '../envUtils.js'
 import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
+import { getSlotUserModel } from './slots.js'
 import { formatModelPricing, getOpus46CostTier } from '../modelCost.js'
 import { getSettings_DEPRECATED } from '../settings/settings.js'
 import type { PermissionMode } from '../permissions/PermissionMode.js'
@@ -34,7 +35,12 @@ export type ModelName = string
 export type ModelSetting = ModelName | ModelAlias | null
 
 export function getSmallFastModel(): ModelName {
-  return process.env.ANTHROPIC_SMALL_FAST_MODEL || getDefaultHaikuModel()
+  // Clerk slot: utility calls (titles, summaries, safety triage)
+  return (
+    getSlotUserModel('clerk') ||
+    process.env.ANTHROPIC_SMALL_FAST_MODEL ||
+    getDefaultHaikuModel()
+  )
 }
 
 export function isNonCustomOpusModel(model: ModelName): boolean {
@@ -98,11 +104,15 @@ export function getMainLoopModel(): ModelName {
 }
 
 export function getBestModel(): ModelName {
-  return getDefaultOpusModel()
+  return getDefaultArchitectModel()
 }
 
 // @[MODEL LAUNCH]: Update the default Opus model (3P providers may lag so keep defaults unchanged).
 export function getDefaultOpusModel(): ModelName {
+  // Artisan slot: long-context coding workhorse (main-loop default)
+  if (getSlotUserModel('artisan')) {
+    return getSlotUserModel('artisan')!
+  }
   if (process.env.ANTHROPIC_DEFAULT_OPUS_MODEL) {
     return process.env.ANTHROPIC_DEFAULT_OPUS_MODEL
   }
@@ -117,6 +127,10 @@ export function getDefaultOpusModel(): ModelName {
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
 export function getDefaultSonnetModel(): ModelName {
+  // Seer slot: multimodal daily tier ("the eyes")
+  if (getSlotUserModel('seer')) {
+    return getSlotUserModel('seer')!
+  }
   if (process.env.ANTHROPIC_DEFAULT_SONNET_MODEL) {
     return process.env.ANTHROPIC_DEFAULT_SONNET_MODEL
   }
@@ -129,12 +143,28 @@ export function getDefaultSonnetModel(): ModelName {
 
 // @[MODEL LAUNCH]: Update the default Haiku model (3P providers may lag so keep defaults unchanged).
 export function getDefaultHaikuModel(): ModelName {
+  // Clerk slot: cheap utility tier (safety triage, summaries)
+  if (getSlotUserModel('clerk')) {
+    return getSlotUserModel('clerk')!
+  }
   if (process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL) {
     return process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL
   }
 
   // Haiku 4.5 is available on all platforms (first-party, Foundry, Bedrock, Vertex)
   return getModelStrings().haiku45
+}
+
+/**
+ * Architect slot: the strongest tier, used for planning. Plan-mode default
+ * when the user has not pinned a model explicitly. Falls back to the Opus
+ * default so zero-config stays fully functional.
+ */
+export function getDefaultArchitectModel(): ModelName {
+  if (getSlotUserModel('architect')) {
+    return getSlotUserModel('architect')!
+  }
+  return getDefaultOpusModel()
 }
 
 /**
@@ -163,6 +193,16 @@ export function getRuntimeMainLoopModel(params: {
     return getDefaultSonnetModel()
   }
 
+  // Default routing: when the user has not pinned a model (or explicitly
+  // picked "Default"), plan mode plans with the Architect slot.
+  if (
+    (getUserSpecifiedModelSetting() ?? null) === null &&
+    permissionMode === 'plan' &&
+    !exceeds200kTokens
+  ) {
+    return getDefaultArchitectModel()
+  }
+
   return mainLoopModel
 }
 
@@ -176,6 +216,12 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
+  // Artisan slot is the main-loop default: long-context coding workhorse.
+  const artisan = getSlotUserModel('artisan')
+  if (artisan) {
+    return artisan
+  }
+
   // Ants default to defaultModel from flag config, or Opus 1M if not configured
   if (process.env.USER_TYPE === 'ant') {
     return (

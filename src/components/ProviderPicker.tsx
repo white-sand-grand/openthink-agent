@@ -19,6 +19,14 @@ import {
   type ProviderEntry,
   type ProviderProtocol,
 } from '../utils/model/apiProviders.js';
+import {
+  MODEL_SLOTS,
+  getSlotConfig,
+  getSlotProviderId,
+  getSlotSupportsVision,
+  setSlotConfig,
+  type SlotId,
+} from '../utils/model/slots.js';
 import { getProviderKey, maskKey, providerKeysPath } from '../utils/model/providerKeys.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
 import { Select } from './CustomSelect/index.js';
@@ -37,6 +45,7 @@ const EDIT_KEY = '__edit_key__';
 const EDIT_URL = '__edit_url__';
 const DELETE_PROVIDER = '__delete_provider__';
 const CUSTOM_TEMPLATE = '__custom_template__';
+const SLOT_ASSIGN = '__slot_assign__';
 
 type View = {
   type: 'list'
@@ -70,6 +79,18 @@ type View = {
 } | {
   type: 'confirmDelete'
   id: string
+} | {
+  type: 'slotList'
+} | {
+  type: 'slotEdit'
+  slot: SlotId
+} | {
+  type: 'slotModel'
+  slot: SlotId
+  manual?: boolean
+} | {
+  type: 'slotProvider'
+  slot: SlotId
 };
 
 export type ProviderPickerProps = {
@@ -119,6 +140,14 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
     if (busy) return;
     if (view.type === 'list') {
       onBack();
+    } else if (view.type === 'slotEdit' || view.type === 'slotModel' || view.type === 'slotProvider') {
+      setView({
+        type: 'slotList'
+      });
+    } else if (view.type === 'slotList') {
+      setView({
+        type: 'list'
+      });
     } else if (view.type !== 'entry') {
       setView({
         type: 'list'
@@ -171,6 +200,11 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
       });
     }
     options.push({
+      value: SLOT_ASSIGN,
+      label: '槽位分配(Architect · Artisan · Seer · Clerk)…',
+      description: '为四个角色槽分别绑定提供商与模型;未配置的槽回落默认模型链',
+    });
+    options.push({
       value: ADD_PROVIDER,
       label: '＋ 添加提供商…',
       description: '选模板或完全自定义:Base URL + API Key + 模型列表(自动识别 Anthropic / OpenAI 协议)',
@@ -181,6 +215,12 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
           <Text dimColor>第三方提供商完全自定义:端点 + 协议(自动识别 Anthropic/OpenAI)+ API Key(仅存本机)+ 自行添加模型。切换立即生效。</Text>
         </Box>
         <Select defaultValue={options[0]?.value} options={options} onChange={value => {
+        if (value === SLOT_ASSIGN) {
+          setView({
+            type: 'slotList'
+          });
+          return;
+        }
         if (value === ADD_PROVIDER) {
           setView({
             type: 'add'
@@ -433,6 +473,184 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
         draft: view.draft,
         id: view.id,
         fetched: null
+      })} visibleOptionCount={Math.min(12, options.length)} />
+      </Box>;
+  } else if (view.type === 'slotList') {
+    const options = MODEL_SLOTS.map(def => {
+      const cfg = getSlotConfig(def.id);
+      const providerId = getSlotProviderId(def.id);
+      const providerName = providerId ? (getProviderEntry(providerId)?.name ?? providerId) : '跟随激活提供商';
+      return {
+        value: def.id,
+        label: `${def.name} · ${def.label}`,
+        description: cfg?.model ? `${cfg.model} @ ${providerName}${getSlotSupportsVision(def.id) ? ' · 视觉' : ''}` : `未配置 — 回落默认模型链 · ${def.description}`,
+      };
+    });
+    content = <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="column">
+          <Text color="remember" bold={true}>槽位分配</Text>
+          <Text dimColor={true}>四个角色槽各自绑定提供商与模型;未配置的槽自动回落默认模型链。默认分工:plan 模式走 Architect,主循环走 Artisan,图片转述走 Seer,后台辅助调用走 Clerk。</Text>
+        </Box>
+        <Select defaultValue={options[0]?.value} options={options} onChange={slot => {
+        setView({
+          type: 'slotEdit',
+          slot
+        });
+      }} onCancel={() => setView({
+        type: 'list'
+      })} visibleOptionCount={options.length} />
+      </Box>;
+  } else if (view.type === 'slotEdit') {
+    const def = MODEL_SLOTS.find(s => s.id === view.slot)!;
+    const cfg = getSlotConfig(view.slot);
+    const providerId = getSlotProviderId(view.slot);
+    const providerName = providerId ? (getProviderEntry(providerId)?.name ?? providerId) : '跟随激活提供商';
+    content = <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="column">
+          <Text color="remember" bold={true}>{def.name} · {def.label}</Text>
+          <Text dimColor={true}>{def.description}</Text>
+        </Box>
+        <Select defaultValue="model" options={[{
+        value: 'model',
+        label: `模型: ${cfg?.model ?? '未配置(回落默认)'}`,
+        description: '设置该槽使用的模型 ID',
+      }, {
+        value: 'provider',
+        label: `提供商: ${providerName}`,
+        description: '绑定到某个已添加的提供商;不绑定则跟随当前激活提供商',
+      }, {
+        value: 'vision',
+        label: `视觉声明: ${getSlotSupportsVision(view.slot) ? '开(该槽模型可接收图片)' : '关'}`,
+        description: '声明该槽模型具备视觉能力;主循环模型未声明时图片会转由 Seer 槽转述',
+      }, {
+        value: 'clear',
+        label: '清除该槽配置',
+        description: '恢复回落默认模型链',
+      }]} onChange={value => {
+        const current = getSlotConfig(view.slot) ?? {};
+        if (value === 'model') {
+          setInputValue('');
+          setView({
+            type: 'slotModel',
+            slot: view.slot
+          });
+          return;
+        }
+        if (value === 'provider') {
+          setView({
+            type: 'slotProvider',
+            slot: view.slot
+          });
+          return;
+        }
+        if (value === 'vision') {
+          setSlotConfig(view.slot, { ...current, supportsVision: !(getSlotSupportsVision(view.slot)) });
+          syncSettingsState();
+          return;
+        }
+        if (value === 'clear') {
+          setSlotConfig(view.slot, {});
+          syncSettingsState();
+        }
+      }} onCancel={() => setView({
+        type: 'slotList'
+      })} />
+      </Box>;
+  } else if (view.type === 'slotModel') {
+    const providerId = getSlotProviderId(view.slot);
+    const entry = providerId ? getProviderEntry(providerId) : undefined;
+    const models = entry?.models ?? [];
+
+    if (view.manual || models.length === 0) {
+      content = <Box flexDirection="column">
+          <Box marginBottom={1} flexDirection="column">
+            <Text color="remember" bold={true}>输入 {view.slot} 槽模型 ID</Text>
+            <Text dimColor={true}>{entry ? `来自提供商 ${entry.name};` : '该槽未绑定提供商 — 输入模型 ID,跟随当前激活提供商。'}回车保存,留空返回。</Text>
+          </Box>
+          <TextInput focus={true} placeholder="model-id…" value={inputValue} onChange={setInputValue} onSubmit={() => {
+          const modelId = inputValue.trim();
+          if (!modelId) {
+            setView({
+              type: 'slotEdit',
+              slot: view.slot
+            });
+            return;
+          }
+          setSlotConfig(view.slot, { ...getSlotConfig(view.slot), model: modelId });
+          syncSettingsState();
+          setView({
+            type: 'slotList'
+          });
+        }} />
+        </Box>;
+    } else {
+      const options = models.map(modelId => ({
+        value: `m:${modelId}`,
+        label: modelId,
+        description: entry?.name ?? '',
+      }));
+      options.push({
+        value: 'm:__manual__',
+        label: '＋ 手动输入模型 ID…',
+        description: '列表里没有时直接填写',
+      });
+      content = <Box flexDirection="column">
+          <Box marginBottom={1} flexDirection="column">
+            <Text color="remember" bold={true}>选择 {view.slot} 槽模型</Text>
+            <Text dimColor={true}>来自提供商 {entry!.name}</Text>
+          </Box>
+          <Select defaultValue={options[0]?.value} options={options} onChange={value => {
+          if (value === 'm:__manual__') {
+            setInputValue('');
+            setView({
+              type: 'slotModel',
+              slot: view.slot,
+              manual: true
+            });
+            return;
+          }
+          const modelId = value.slice(2);
+          setSlotConfig(view.slot, { ...getSlotConfig(view.slot), model: modelId });
+          syncSettingsState();
+          setView({
+            type: 'slotList'
+          });
+        }} onCancel={() => setView({
+          type: 'slotEdit',
+          slot: view.slot
+        })} visibleOptionCount={Math.min(12, options.length)} />
+        </Box>;
+    }
+  } else if (view.type === 'slotProvider') {
+    const entries = listProviders();
+    const options = [{
+      value: 'p:__follow__',
+      label: '跟随当前激活提供商',
+      description: '不单独绑定;激活哪家用哪家',
+    }];
+    for (const item of entries) {
+      options.push({
+        value: `p:${item.id}`,
+        label: item.entry.name,
+        description: item.entry.baseUrl,
+      });
+    }
+    content = <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="column">
+          <Text color="remember" bold={true}>{MODEL_SLOTS.find(s => s.id === view.slot)!.name} · 绑定提供商</Text>
+          <Text dimColor={true}>绑定后,该槽的请求走指定提供商(需要该提供商已配置 API Key)。</Text>
+        </Box>
+        <Select defaultValue={options[0]?.value} options={options} onChange={value => {
+        const providerId = value === 'p:__follow__' ? undefined : value.slice(2);
+        setSlotConfig(view.slot, { ...getSlotConfig(view.slot), provider: providerId });
+        syncSettingsState();
+        setView({
+          type: 'slotEdit',
+          slot: view.slot
+        });
+      }} onCancel={() => setView({
+        type: 'slotEdit',
+        slot: view.slot
       })} visibleOptionCount={Math.min(12, options.length)} />
       </Box>;
   } else {

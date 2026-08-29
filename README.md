@@ -11,6 +11,7 @@
 
 - 🤖 **纯 API 接入** — `ANTHROPIC_API_KEY` 环境变量或 `apiKeyHelper`，无需 OAuth
 - 🔌 **多提供商切换** — `/provider` 在 TUI 内直接切换 GLM / Kimi / DeepSeek / Qwen / OpenRouter / 自定义网关，Anthropic 与 OpenAI 双协议自动识别
+- 🎭 **四角色模型槽位** — Architect（运筹·规划）/ Artisan（锻造·编码）/ Seer（洞察·视觉）/ Clerk（文书·轻量判断），每个槽位可独立绑定不同提供商与模型
 - 🔧 **完整工具系统** — Edit、Write、Bash、Read、Multiedit 等内置工具，含权限控制
 - 📦 **插件生态** — Skills 插件系统，支持安装/卸载社区插件
 - 🌍 **多平台支持** — Anthropic API / AWS Bedrock / Google Vertex / Azure Foundry / 任意兼容网关
@@ -154,6 +155,21 @@ OpenThink 不绑定单一厂商。所有模型接入都走统一的提供商抽�
 ### 在 /model 中使用
 
 `/model` 选择器（快捷键 `meta+p`）内置「更多提供商」入口；当前提供商的模型列表会自动出现在选择器顶部，Claude 系列模型与第三方模型可随时互切，后台辅助调用（会话标题等）自动使用当前提供商的模型。
+
+## 四角色模型槽位
+
+OpenThink 用四个固定角色槽位组织模型路由。槽位是纯机制 —— 用什么模型、接哪家厂商完全由你决定；下面的分工只是开箱默认行为，随时可以在 `/provider` → 「槽位分配」中调整。
+
+| 槽位 | 角色 | 默认分工 |
+|------|------|----------|
+| **Architect · 运筹** | 最强档，可以是=最贵的 | 制定计划与方案设计，plan 模式默认使用 |
+| **Artisan · 锻造** | 主力工人 | 长上下文持续编码，精准执行计划与代码修改，主循环默认 |
+| **Seer · 洞察** | 多模态之眼 | 日常轻量任务；为无视觉的模型转述图像 |
+| **Clerk · 文书** | 后勤文书 | 安全分类、上下文总结等小判断任务，消耗最低 |
+
+- 四个槽位可以分属四个不同提供商，也可以全指同一家；未配置的槽自动回落默认模型链
+- 旧别名 `opus` / `sonnet` / `haiku` / `best` 静默映射到 Artisan / Seer / Clerk / Architect，存量配置无需迁移
+- 当主循环模型不具备视觉能力（未在槽位中声明 `supportsVision`）时，图片会自动转由 Seer 槽转述为文字描述
 
 ## 可用命令
 

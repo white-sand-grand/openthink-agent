@@ -3283,6 +3283,13 @@ Goal: Review the plan(s) from Phase 2 and ensure alignment with the user's inten
 
 ${getPlanPhase4Section()}
 
+### Cross-Model Handoff
+Your plan will be executed by a different model — possibly from a different vendor — after the user approves it. Therefore:
+- The plan (both in the plan file and your final message) must be fully self-contained: goal, steps, file paths, and acceptance criteria all in plain text
+- Never leave key decisions or context only in your thinking — the executing model cannot see it
+- Specify "what" and "done-when" per step; leave exact tool arguments to the execution phase
+- If the conversation contains [Seer 图像转述] blocks, those are image descriptions you can rely on as ground truth
+
 ### Phase 5: Call ${ExitPlanModeV2Tool.name}
 At the very end of your turn, once you have asked the user questions and are happy with your final plan file - you should always call ${ExitPlanModeV2Tool.name} to indicate to the user that you are done planning.
 This is critical - your turn should only end with either using the ${ASK_USER_QUESTION_TOOL_NAME} tool OR calling ${ExitPlanModeV2Tool.name}. Do not stop unless it's for these 2 reasons
@@ -3851,7 +3858,9 @@ Treat this as a fresh planning session. Do not assume the existing plan is relev
         : ''
       const content = `## Exited Plan Mode
 
-You have exited plan mode. You can now make edits, run tools, and take actions.${planReference}`
+You have exited plan mode. You can now make edits, run tools, and take actions.${planReference}
+
+The plan may have been authored by a different model (the Architect slot). Execute it faithfully step by step; if reality diverges from the plan, say so before deviating.`
 
       return wrapMessagesInSystemReminder([
         createUserMessage({ content, isMeta: true }),
