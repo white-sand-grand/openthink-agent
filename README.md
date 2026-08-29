@@ -1,66 +1,85 @@
-# OpenThink
+# OpenThink Agent
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Bun](https://img.shields.io/badge/Bun-1.3%2B-black)](https://bun.sh)
 
-**OpenThink** 是一个基于 Anthropic Claude Code 构建的 AI 编程助手 CLI 工具，采用 MIT 协议完全开源。它保留了 Claude Code 的核心能力（工具调用、上下文管理、插件系统），同时移除了账户登录系统，改为纯 API Key 接入模式。
+**OpenThink Agent** 是一个纯 API 接入的 AI 编程助手 CLI，MIT 协议开源。
+
+以 Claude Code 为基础架构，移除了账户登录与 OAuth 流程，只保留 API Key 认证。记忆文件采用通用的 **AGENT.md** 约定，便于接入各类开源 Agent 生态。
 
 ## 特性
 
-- 🤖 **纯 API 接入** — 通过 `ANTHROPIC_API_KEY` 环境变量或 `apiKeyHelper` 配置认证，无需 OAuth 登录
-- 🔧 **完整的工具系统** — Edit、Write、Bash、Read、Multiedit 等内置工具
-- 📦 **插件生态** — 支持 Skills 插件系统，可扩展自定义 Skill
-- 🌍 **多平台支持** — 支持 Anthropic API、AWS Bedrock、Google Vertex AI、Azure Foundry
-- ⚡ **高性能架构** — 基于 Bun 运行时，流式响应，子代理并行执行
-- 📝 **AGENT.md 系统提示** — 支持项目级和用户级 AGENT.md 记忆文件自动发现
+- 🤖 **纯 API 接入** — `ANTHROPIC_API_KEY` 环境变量或 `apiKeyHelper`，无需 OAuth
+- 🔧 **完整工具系统** — Edit、Write、Bash、Read、Multiedit 等内置工具，含权限控制
+- 📦 **插件生态** — Skills 插件系统，支持安装/卸载社区插件
+- 🌍 **多平台支持** — Anthropic API / AWS Bedrock / Google Vertex / Azure Foundry
+- ⚡ **高性能架构** — Bun 运行时，流式响应，子代理并行
+- 📝 **AGENT.md 记忆** — 项目级/用户级自动发现，兼容主流开源 Agent 工具
+- 🔌 **MCP 协议** — 完整的 Model Context Protocol 服务器管理
 
-## 架构
+## 系统架构
 
 ```
-openthink/
+openthink-agent/
 ├── src/
-│   ├── entrypoints/          # 入口点（CLI、MCP、SDK）
-│   │   ├── cli.tsx          # 主 CLI 入口
-│   │   ├── mcp.ts           # MCP 服务器入口
-│   │   └── sdk/             # Agent SDK 类型定义
-│   ├── commands/            # 斜杠命令系统
-│   │   ├── help/            # /help
-│   │   ├── cost/            # /cost 统计
-│   │   ├── init/            # /init 初始化
-│   │   ├── skills/          # /skills 管理
-│   │   ├── mcp/             # /mcp 管理
-│   │   └── ...              # 更多命令
-│   ├── tools/               # 工具系统
-│   │   ├── Tool.ts          # 工具基类
-│   │   ├── BashTool/        # Bash 执行工具
-│   │   ├── EditTool/        # 文件编辑工具
-│   │   ├── WriteTool/       # 文件写入工具
-│   │   ├── ReadTool/        # 文件读取工具
-│   │   ├── AgentTool/       # 子代理工具
-│   │   └── ...              # 更多工具
-│   ├── services/            # 核心服务
-│   │   ├── api/             # Anthropic API 客户端
-│   │   ├── mcp/             # MCP 服务器管理
-│   │   ├── analytics/       # 遥测和分析
+│   ├── entrypoints/              # 程序入口
+│   │   ├── cli.tsx              # 主 CLI 交互入口
+│   │   ├── mcp.ts               # MCP 服务器模式
+│   │   └── sdk/                 # Agent SDK 类型定义与 schema
+│   ├── commands/                # 斜杠命令系统（30+ 命令）
+│   │   ├── help/ help            #   /help
+│   │   ├── cost/                #   /cost Token 统计
+│   │   ├── init/                #   /init AGENT.md 初始化
+│   │   ├── skills/              #   /skills 插件管理
+│   │   ├── mcp/                 #   /mcp MCP 管理
+│   │   ├── review/              #   /review 代码评审
 │   │   └── ...
-│   ├── utils/               # 工具函数
-│   │   ├── apiKey.ts        # API Key 管理
-│   │   ├── settings/        # 配置管理
-│   │   ├── messages/        # 消息处理
+│   ├── tools/                   # 工具执行层
+│   │   ├── Tool.ts              #   工具基类与权限框架
+│   │   ├── BashTool/            #   命令行执行
+│   │   ├── EditTool/            #   精确文本编辑
+│   │   ├── WriteTool/           #   文件写入
+│   │   ├── ReadTool/            #   文件读取
+│   │   ├── AgentTool/           #   子代理委派
+│   │   ├── McpTool/             #   MCP 工具调用
 │   │   └── ...
-│   ├── components/          # React/TUI 组件
-│   ├── constants/           # 常量定义
-│   ├── bootstrap/           # 启动状态管理
-│   └── hooks/               # React hooks
+│   ├── services/                # 核心服务
+│   │   ├── api/                 #   Anthropic API 客户端与重试
+│   │   ├── mcp/                 #   MCP 服务器生命周期管理
+│   │   ├── analytics/           #   遥测（可禁用）
+│   │   └── ...
+│   ├── utils/                   # 工具库
+│   │   ├── apiKey.ts            #   API Key 管理（纯 Key 模式）
+│   │   ├── settings/            #   三级配置管理（Global/Project/Local）
+│   │   ├── messages/            #   消息序列化与上下文构建
+│   │   ├── agentmd.ts           #   AGENT.md 解析
+│   │   └── ...
+│   ├── components/              # Ink TUI 组件
+│   ├── constants/               # 常量与系统提示词
+│   ├── bootstrap/               # 启动与状态管理
+│   └── hooks/                   # React hooks
 ├── package.json
 ├── tsconfig.json
+├── LICENSE
 └── README.md
 ```
 
 ### 核心设计
 
+| 模块 | 职责 |
+|------|------|
+| **entrypoints** | CLI / MCP / SDK 三种启动模式 |
+| **commands** | 斜杠命令注册、权限校验、参数解析 |
+| **tools** | 工具定义、权限控制、执行与结果序列化 |
+| **services/api** | API 请求构建、流式响应、重试、错误分类 |
+| **services/mcp** | MCP 服务器发现、连接、工具转换 |
+| **utils/settings** | 三级配置合并与变更监听 |
+| **utils/agentmd** | AGENT.md 文件发现、解析与注入 |
+| **bootstrap** | REPL 主循环、会话管理、指标收集 |
+
 - **REPL 架构**：基于 Ink（React for CLI）构建交互式命令行界面
-- **工具调用**：类 ChatGPT Function Calling 的工具系统，支持并行执行和权限控制
-- **上下文管理**：自动 CLAUDE.md 发现、上下文压缩、会话持久化
+- **工具调用**：类 Function Calling 的工具系统，支持并行执行与权限控制
+- **上下文管理**：自动 AGENT.md 发现、上下文压缩、会话持久化
 - **多 Provider**：统一抽象层支持 Anthropic / Bedrock / Vertex / Foundry
 - **Plugin 系统**：Skills 可安装/卸载，支持版本管理和自动更新 Marketplaces
 
@@ -68,29 +87,25 @@ openthink/
 
 ### 环境要求
 
-- Bun 1.3.5 或更高版本
-- Node.js 24 或更高版本
+- [Bun](https://bun.sh) 1.3.5 或更高版本
 
 ### 安装
 
 ```bash
-# 克隆仓库
-git clone https://github.com/anthropics/claude-code.git openthink-agent
+git clone https://github.com/white-sand-grand/openthink-agent.git
 cd openthink-agent
-
-# 安装依赖
 bun install
 ```
 
 ### 配置
 
-设置 Anthropic API Key：
+设置 API Key：
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-或配置 `apiKeyHelper`：
+或使用 `apiKeyHelper`：
 
 ```bash
 openthink config set apiKeyHelper "echo $ANTHROPIC_API_KEY"
@@ -99,63 +114,62 @@ openthink config set apiKeyHelper "echo $ANTHROPIC_API_KEY"
 ### 运行
 
 ```bash
-# 启动交互式 REPL
+# 交互式 REPL
 bun run dev
 
-# 非交互模式
+# 单次查询模式
 bun run dev -p "你的问题"
 
 # 查看版本
 bun run version
 ```
 
-## 命令
+## 可用命令
 
 | 命令 | 说明 |
 |------|------|
 | `/help` | 查看帮助 |
 | `/clear` | 清屏 |
-| `/compact` | 压缩上下文 |
-| `/cost` | 查看 session 成本 |
-| `/diff` | 查看 diff |
-| `/doctor` | 运行诊断 |
-| `/config` | 查看/修改配置 |
+| `/compact` | 压缩上下文窗口 |
+| `/cost` | 当前 session 成本统计 |
+| `/diff` | 查看变更差异 |
+| `/doctor` | 运行环境诊断 |
+| `/config` | 查看与修改配置 |
 | `/init` | 初始化 AGENT.md |
 | `/skills` | 管理插件 |
 | `/model` | 切换模型 |
 
-## 核心模块
+## 配置系统
 
-### API Key 管理 (`src/utils/apiKey.ts`)
+三级配置，优先级从低到高：
 
-纯 API Key 模式，支持两种认证方式：
+| 层级 | 路径 | 说明 |
+|------|------|------|
+| Global | `~/.openthink/settings.json` | 用户全局配置 |
+| Project | `.openthink/settings.json` | 项目共享配置（可提交 Git） |
+| Local | `.openthink/settings.local.json` | 本地覆盖（不提交） |
 
-1. **环境变量**：`ANTHROPIC_API_KEY`
-2. **apiKeyHelper**：自定义命令获取 API Key
+## AGENT.md 记忆文件
 
-### 配置系统 (`src/utils/settings/`)
+采用通用的 AGENT.md 约定，与主流开源 Agent 工具兼容：
 
-三级配置覆盖：
+```
+项目根目录/
+├── AGENT.md          # 项目级共享指令（团队成员共享）
+├── AGENT.local.md    # 项目级本地覆盖（不提交 Git）
+└── .openthink/
+    └── settings.json
+```
 
-- **Global**：`~/.openthink/settings.json` — 用户级配置
-- **Project**：`.openthink/settings.json` — 项目级配置（可提交到 Git）
-- **Local**：`.openthink/settings.local.json` — 本地覆盖
+用户级全局记忆：`~/.openthink/AGENT.md`
 
-### AGENT.md 系统记忆
+## 遥测
 
-自动发现的记忆文件层级：
-
-- `AGENT.md` — 项目级共享指令
-- `AGENT.local.md` — 项目级本地覆盖
-- `~/.openthink/AGENT.md` — 用户级全局指令
-
-### 遥测
-
-可选的匿名使用统计，通过环境变量控制：
+可选的匿名使用统计，默认关闭：
 
 ```bash
-OPENTHINK_ENABLE_TELEMETRY=1  # 启用
-OPENTHINK_DISABLE_NONESSENTIAL_TRAFFIC=1  # 减少非必要上报
+OPENTHINK_ENABLE_TELEMETRY=1                  # 启用
+OPENTHINK_DISABLE_NONESSENTIAL_TRAFFIC=1      # 仅上报必要数据
 ```
 
 ## 开发
@@ -164,17 +178,13 @@ OPENTHINK_DISABLE_NONESSENTIAL_TRAFFIC=1  # 减少非必要上报
 # 开发模式
 bun run dev
 
-# 构建
+# 类型检查
 bun run build
 
 # 测试
 bun test
 ```
 
-## 许可证
+## License
 
-MIT License — 详见 [LICENSE](LICENSE) 文件。
-
-## 致谢
-
-本项目基于 [Anthropic Claude Code](https://github.com/anthropics/claude-code) 的源代码构建，感谢 Anthropic 团队开源了这部分代码。
+MIT — 详见 [LICENSE](LICENSE) 文件。
