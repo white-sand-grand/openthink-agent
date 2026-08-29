@@ -16,3 +16,11 @@ coverage/
 .claude/
 .idea/
 .vscode/
+# 内部文档(升级计划 / 上游同步台账)——不入库
+docs/upgrade-plan-*.md
+docs/upstream-sync/
+
+# 本地产物
+image-processor.node
+shrimp-preview.*
+*.ansi

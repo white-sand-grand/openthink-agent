@@ -12,6 +12,8 @@ import {
 } from 'src/utils/apiKey.js'
 import { getUserAgent } from 'src/utils/http.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
+import { getActiveProviderOverride } from 'src/utils/model/apiProviders.js'
+import { createOpenAiCompatClient } from './openaiCompat.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
@@ -297,17 +299,40 @@ export async function getAnthropicClient({
     return new AnthropicVertex(vertexArgs) as unknown as Anthropic
   }
 
+  // Third-party provider switched via /provider: OpenAI-wire-format endpoints
+  // go through the chat-completions adapter (the app speaks Anthropic
+  // Messages internally); Anthropic-format endpoints use the native SDK with
+  // the provider's base URL and key. OAuth tokens must NOT leak to the
+  // provider either way.
+  const providerOverride = getActiveProviderOverride()
+  if (providerOverride && providerOverride.protocol === 'openai') {
+    logForDebugging(
+      `[API:provider] routing via OpenAI-compatible provider '${providerOverride.id}' -> ${providerOverride.baseUrl}`,
+    )
+    return createOpenAiCompatClient({
+      baseUrl: providerOverride.baseUrl,
+      apiKey: providerOverride.apiKey,
+    }) as unknown as Anthropic
+  }
   // Determine authentication method based on available tokens
   const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
-    apiKey: isClaudeAISubscriber() ? null : apiKey || getAnthropicApiKey(),
-    authToken: isClaudeAISubscriber()
-      ? getClaudeAIOAuthTokens()?.accessToken
-      : undefined,
-    // Set baseURL from OAuth config when using staging OAuth
+    apiKey: providerOverride
+      ? providerOverride.apiKey
+      : isClaudeAISubscriber()
+        ? null
+        : apiKey || getAnthropicApiKey(),
+    authToken: providerOverride
+      ? undefined
+      : isClaudeAISubscriber()
+        ? getClaudeAIOAuthTokens()?.accessToken
+        : undefined,
+    // Provider override wins over the staging-OAuth base URL — it is an
+    // explicit user action from the provider picker.
     ...(process.env.USER_TYPE === 'ant' &&
     isEnvTruthy(process.env.USE_STAGING_OAUTH)
       ? { baseURL: getOauthConfig().BASE_API_URL }
       : {}),
+    ...(providerOverride ? { baseURL: providerOverride.baseUrl } : {}),
     ...ARGS,
     ...(isDebugToStdErr() && { logger: createStderrLogger() }),
   }

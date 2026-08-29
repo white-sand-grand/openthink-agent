@@ -376,6 +376,34 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe('Override the default model used by OpenThink'),
+      apiProvider: z
+        .string()
+        .optional()
+        .describe(
+          'Active third-party API provider id (managed by /provider). When set, requests go to that provider instead of the default Anthropic endpoint.',
+        ),
+      apiProviders: z
+        .record(
+          z.string(),
+          z.object({
+            name: z.string().optional(),
+            baseUrl: z.string().optional(),
+            protocol: z.string().optional(),
+            models: z.array(z.string()).optional(),
+            websiteUrl: z.string().optional(),
+            notes: z.string().optional(),
+            createdAt: z.number().optional(),
+            detectedProtocol: z.string().optional(),
+            template: z.boolean().optional(),
+            // Legacy field from the first cut — migrated to the dedicated
+            // key file on read; kept schema-tolerant so old files parse.
+            apiKey: z.string().optional(),
+          }),
+        )
+        .optional()
+        .describe(
+          'Third-party API provider metadata (managed by /provider). API keys live in a separate local key store, not here.',
+        ),
       // Enterprise allowlist of models
       availableModels: z
         .array(z.string())
