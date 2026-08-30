@@ -7,7 +7,9 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
 import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from '../../../bootstrap/state.js';
 import { generateSessionName } from '../../../commands/rename/generateSessionName.js';
-import { launchUltraplan } from '../../../commands/ultraplan.js';
+// Ultraplan was removed; feature('ULTRAPLAN') is compile-time false so this
+// stub is dead-code-eliminated. The function never runs at runtime.
+const getLaunchUltraplan = (): (() => Promise<void>) | null => null;
 import type { KeyboardEvent } from '../../../ink/events/keyboard-event.js';
 import { Box, Text } from '../../../ink.js';
 import type { AppState } from '../../../state/AppStateStore.js';
@@ -288,7 +290,7 @@ export function ExitPlanModePermissionRequest({
       onDone();
       onReject();
       toolUseConfirm.onReject('Plan being refined via Ultraplan — please wait for the result.');
-      void launchUltraplan({
+      void getLaunchUltraplan()!({
         blurb: '',
         seedPlan: currentPlan,
         getAppState: store.getState,

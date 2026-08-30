@@ -24,3 +24,6 @@ docs/upstream-sync/
 image-processor.node
 shrimp-preview.*
 *.ansi
+
+# 交接文档(内部)
+docs/HANDOFF*.md

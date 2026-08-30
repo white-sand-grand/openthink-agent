@@ -22,7 +22,10 @@ import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/
 import type { DeepImmutable } from 'src/types/utils.js';
 import { intersperse } from 'src/utils/array.js';
 import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js';
-import { stopUltraplan } from '../../commands/ultraplan.js';
+// Ultraplan was removed; feature('ULTRAPLAN') is compile-time false so the
+// DCE strips all ULTRAPLAN-gated code. A plain null stub satisfies the type
+// checker and avoids a dev-entry static-scan false positive on require().
+const getStopUltraplan = (): ((id: string, sessionId: string, setAppState: Function) => void) | null => null;
 import type { CommandResultDisplay } from '../../commands.js';
 import { useRegisterOverlay } from '../../context/overlayContext.js';
 import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
@@ -281,7 +284,7 @@ export function BackgroundTasksDialog({
         void killDreamTask(currentSelection_0.id);
       } else if (currentSelection_0.type === 'remote_agent' && currentSelection_0.status === 'running') {
         if (currentSelection_0.task.isUltraplan) {
-          void stopUltraplan(currentSelection_0.id, currentSelection_0.task.sessionId, setAppState);
+          void getStopUltraplan()!(currentSelection_0.id, currentSelection_0.task.sessionId, setAppState);
         } else {
           void killRemoteAgentTask(currentSelection_0.id);
         }
@@ -378,7 +381,7 @@ export function BackgroundTasksDialog({
       case 'local_agent':
         return <AsyncAgentDetailDialog agent={task_0} onDone={onDone} onKillAgent={() => void killAgentTask(task_0.id)} onBack={goBackToList} key={`agent-${task_0.id}`} />;
       case 'remote_agent':
-        return <RemoteSessionDetailDialog session={task_0} onDone={onDone} toolUseContext={toolUseContext} onBack={goBackToList} onKill={task_0.status !== 'running' ? undefined : task_0.isUltraplan ? () => void stopUltraplan(task_0.id, task_0.sessionId, setAppState) : () => void killRemoteAgentTask(task_0.id)} key={`session-${task_0.id}`} />;
+        return <RemoteSessionDetailDialog session={task_0} onDone={onDone} toolUseContext={toolUseContext} onBack={goBackToList} onKill={task_0.status !== 'running' ? undefined : task_0.isUltraplan ? () => void getStopUltraplan()!(task_0.id, task_0.sessionId, setAppState) : () => void killRemoteAgentTask(task_0.id)} key={`session-${task_0.id}`} />;
       case 'in_process_teammate':
         return <InProcessTeammateDetailDialog teammate={task_0} onDone={onDone} onKill={task_0.status === 'running' ? () => void killTeammateTask(task_0.id) : undefined} onBack={goBackToList} onForeground={task_0.status === 'running' ? () => {
           enterTeammateView(task_0.id, setAppState);

@@ -5,6 +5,7 @@
 import type { Command } from '../../commands.js'
 
 const provider = {
+  aliases: ['provide'],
   type: 'local-jsx',
   name: 'provider',
   description:
