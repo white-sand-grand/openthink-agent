@@ -28,3 +28,7 @@ balance.mjs
 
 # 交接文档(内部)
 docs/HANDOFF*.md
+
+# 项目记忆文件必须纳入版本控制
+!AGENTS.md
+!CLAUDE.md
