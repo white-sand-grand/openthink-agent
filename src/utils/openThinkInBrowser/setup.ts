@@ -10,3 +10,7 @@ export function shouldAutoEnableOpenThinkInBrowser() {
 export function shouldEnableOpenThinkInBrowser() {
   return false
 }
+
+export async function isChromeExtensionInstalled(): Promise<boolean> {
+  return false
+}

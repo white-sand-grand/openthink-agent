@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Bun](https://img.shields.io/badge/Bun-1.3%2B-black)](https://bun.sh)
 
-**OpenThink Agent** 是一个纯 API 接入、多提供商的 AI 编程助手 CLI，MIT 协议开源。
+**OpenThink Agent** 是一个纯 API 接入、多提供商的 AI 编程助手 CLI，MIT 协议开源。应用无需预先配置 API Key 即可启动并进入交互界面，发送首个请求前再通过环境变量或提供商设置完成认证。
 
 以 CC 为基础架构，移除了账户登录与 OAuth 流程，只保留 API Key 认证。支持在终端内直接切换任意主流模型提供商（Anthropic 协议与 OpenAI 协议均原生支持）。记忆文件采用通用的 **AGENT.md** 约定，便于接入各类开源 Agent 生态。
 
@@ -16,7 +16,7 @@
 - 📦 **插件生态** — Skills 插件系统，支持安装/卸载社区插件
 - 🌍 **多平台支持** — Anthropic API / AWS Bedrock / Google Vertex / Azure Foundry / 任意兼容网关
 - ⚡ **高性能架构** — Bun 运行时，流式响应，子代理并行
-- 📝 **AGENT.md 记忆** — 项目级/用户级自动发现，兼容主流开源 Agent 工具
+- 📝 **AGENT.md 记忆约定** — 兼容项目级/用户级 Agent 指令文件格式，便于接入开源 Agent 生态
 - 🔐 **密钥本地保存** — 提供商 API Key 存放在独立本地密钥文件（0600 权限），不进入项目与设置文件
 - 🔌 **MCP 协议** — 完整的 Model Context Protocol 服务器管理
 
@@ -112,11 +112,7 @@ bun install
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-或使用 `apiKeyHelper`：
-
-```bash
-openthink config set apiKeyHelper "echo $ANTHROPIC_API_KEY"
-```
+或在进入 TUI 后使用 `/config` 设置 `apiKeyHelper`，也可以通过 `/provider` 为具体模型提供商粘贴 API Key。密钥不会写入项目文件。
 
 ### 运行
 
@@ -206,7 +202,7 @@ OpenThink 用四个固定角色槽位组织模型路由。槽位是纯机制 —
 | `env.ANTHROPIC_BASE_URL` 等 | settings.json | 激活时自动写入的路由环境变量 |
 | API Key | `~/.openthink/provider-keys.json` | 独立密钥文件（0600），仅保存在本机 |
 
-## AGENT.md 记忆文件
+## AGENT.md 记忆约定
 
 采用通用的 AGENT.md 约定，与主流开源 Agent 工具兼容：
 

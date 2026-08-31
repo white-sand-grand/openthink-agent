@@ -121,11 +121,16 @@ const PROVIDER_ENV_KEYS = [
 
 export type ProviderRegistry = Record<string, ProviderEntry>
 
+function isSafeProviderId(id: string): boolean {
+  return Boolean(id) && id !== '__proto__' && id !== 'prototype' && id !== 'constructor'
+}
+
 function readRegistry(): { registry: ProviderRegistry; activeId: string | null } {
   const user = getSettingsForSource('userSettings')
-  const registry: ProviderRegistry = {}
+  const registry: ProviderRegistry = Object.create(null) as ProviderRegistry
   const raw = user?.apiProviders ?? {}
   for (const [id, entry] of Object.entries(raw)) {
+    if (!isSafeProviderId(id)) continue
     if (!entry || typeof entry !== 'object') continue
     const e = entry as Record<string, unknown>
     // Legacy entries from the first cut stored {apiKey} inside settings —
@@ -200,6 +205,7 @@ export function upsertProvider(
   entry: ProviderEntry,
   apiKey?: string,
 ): void {
+  if (!isSafeProviderId(id)) throw new Error('Invalid provider ID')
   const { registry } = readRegistry()
   const next: ProviderRegistry = { ...registry, [id]: entry }
   if (apiKey !== undefined) setProviderKey(id, apiKey)

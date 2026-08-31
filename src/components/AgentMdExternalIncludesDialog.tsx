@@ -1,9 +1,16 @@
 // Stub: AgentMdExternalIncludesDialog - removed in API-only mode
-import React from 'react'
+export type AgentMdExternalIncludesDialogProps = {
+  onDone?: (value?: unknown) => void
+  onClose?: () => void
+  externalIncludes?: Map<string, string>
+  includes?: Map<string, string>
+  isStandaloneDialog?: boolean
+}
 
-export default function AgentMdExternalIncludesDialog(_props: {
-  onClose: () => void
-  includes: Map<string, string>
-}) {
+export function AgentMdExternalIncludesDialog(
+  _props: AgentMdExternalIncludesDialogProps,
+) {
   return null
 }
+
+export default AgentMdExternalIncludesDialog

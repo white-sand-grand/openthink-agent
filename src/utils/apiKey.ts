@@ -14,7 +14,7 @@
 // ============================================================================
 
 const ANTHROPIC_API_KEY = 'ANTHROPIC_API_KEY'
-const DEFAULT_API_KEY_HELPER = 'echo $ANTHROPIC_API_KEY'
+const API_KEY_HELPER_TIMEOUT_MS = 15_000
 
 export function getApiKey(): string | null {
   if (process.env[ANTHROPIC_API_KEY]) {
@@ -23,7 +23,10 @@ export function getApiKey(): string | null {
 
   const helper = getConfiguredApiKeyHelper()
   if (helper) {
-    return getApiKeyFromApiKeyHelper(helper)
+    // Synchronous callers (notably API client construction) cannot await the
+    // helper process. Use the short-lived prefetched value when available;
+    // getApiKeyAsync() remains the async path that executes the helper.
+    return getApiKeyFromApiKeyHelperCached()
   }
 
   return null
@@ -69,15 +72,20 @@ export function getConfiguredApiKeyHelper(): string | null {
 
   // Check global config
   const globalConfig = getGlobalConfig()
-  if (globalConfig && globalConfig.apiKeyHelper) {
+  if (globalConfig && typeof globalConfig.apiKeyHelper === 'string') {
     return globalConfig.apiKeyHelper
   }
 
   return null
 }
 
-export async function getApiKeyFromApiKeyHelper(command?: string): Promise<string | null> {
-  const helper = command ?? getConfiguredApiKeyHelper()
+export async function getApiKeyFromApiKeyHelper(
+  command?: string | boolean,
+): Promise<string | null> {
+  // The client passes the non-interactive flag as the legacy first argument;
+  // it is not an executable command. Resolve the configured helper in that
+  // case to avoid calling .trim() on a boolean.
+  const helper = typeof command === 'string' ? command : getConfiguredApiKeyHelper()
   if (!helper) {
     return null
   }
@@ -90,12 +98,36 @@ export async function getApiKeyFromApiKeyHelper(command?: string): Promise<strin
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { execa } = await import('execa')
-    const result = await execa(helper, { shell: true, encoding: 'utf8' })
-    const key = result.stdout.trim()
-    if (key) {
-      _apiKeyHelperCache = { result: key, timestamp: Date.now() }
+    const child = execa(helper, {
+      shell: true,
+      encoding: 'utf8',
+      detached: process.platform !== 'win32',
+    })
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        if (process.platform !== 'win32' && child.pid) {
+          try {
+            process.kill(-child.pid, 'SIGKILL')
+          } catch {
+            child.kill('SIGKILL')
+          }
+        } else {
+          child.kill('SIGKILL')
+        }
+        reject(new Error('apiKeyHelper timed out'))
+      }, API_KEY_HELPER_TIMEOUT_MS)
+    })
+    try {
+      const result = await Promise.race([child, timeout])
+      const key = result.stdout.trim()
+      if (key) {
+        _apiKeyHelperCache = { result: key, timestamp: Date.now() }
+      }
+      return key || null
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle)
     }
-    return key || null
   } catch {
     return null
   }
@@ -335,12 +367,25 @@ export function getOauthAccountInfo(): { email: string } | null {
   return null
 }
 
+export function getAccountInformation(): undefined {
+  return undefined
+}
+
 export function isClaudeAISubscriber(): boolean {
   return false
 }
 
 export function getSubscriptionType(): string | null {
   return null
+}
+
+/**
+ * Human-readable subscription label used by the interactive logo.
+ * API-only builds never have a Claude.ai subscription, but the export is
+ * required by the shared display module during startup.
+ */
+export function getSubscriptionName(): string {
+  return getSubscriptionType() ?? 'Claude.ai'
 }
 
 export function isProSubscriber(): boolean {
@@ -359,8 +404,9 @@ export function is1PApiCustomer(): boolean {
   return false
 }
 
-export function validateForceLoginOrg(): boolean {
-  return false
+export function validateForceLoginOrg(): { valid: boolean; message?: string } {
+  // API-only builds do not have Claude.ai organization restrictions.
+  return { valid: true }
 }
 
 export function isOverageProvisioningAllowed(): boolean {
@@ -400,6 +446,10 @@ export function getAuthTokenSource(): string {
     return 'ANTHROPIC_API_KEY'
   }
   return 'none'
+}
+
+export function getOtelHeadersFromHelper(): Record<string, string> {
+  return {}
 }
 
 export function getApiKeyFromConfigOrMacOSKeychain(): string | null {

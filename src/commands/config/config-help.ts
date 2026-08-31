@@ -3,14 +3,10 @@ import { type SettingsJson, SettingsSchema } from '../../utils/settings/types.js
 // ─── Zod introspection helpers ───
 
 function unwrapOptional(schema: unknown): unknown {
-  const s = schema as { isOptional?: () => boolean; isNullable?: () => boolean; unwrap: () => unknown }
-  while ((s.isOptional?.() || s.isNullable?.()) && typeof s.unwrap === 'function') {
-    // description lives on the outer wrapper, preserve it
-    const desc = (schema as { description?: string }).description
-    schema = s.unwrap()
-    if (desc && !(schema as { description?: string }).description) {
-      ;(schema as { description: string }).description = desc
-    }
+  let current = schema as { isOptional?: () => boolean; isNullable?: () => boolean; unwrap?: () => unknown }
+  while ((current.isOptional?.() || current.isNullable?.()) && typeof current.unwrap === 'function') {
+    schema = current.unwrap()
+    current = schema as { isOptional?: () => boolean; isNullable?: () => boolean; unwrap?: () => unknown }
   }
   return schema
 }

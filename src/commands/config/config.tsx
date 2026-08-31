@@ -13,6 +13,7 @@ import {
   getSettingsConfigurableKeys,
 } from './config-help.js'
 import { updateSettingsForSource } from '../../utils/settings/settings.js'
+import { SettingsSchema } from '../../utils/settings/types.js'
 import { Settings } from '../../components/Settings/Settings.js'
 
 function coerceValue(raw: string, type: string, values?: string[]): { ok: true; value: unknown } | { ok: false; error: string } {
@@ -31,13 +32,19 @@ function coerceValue(raw: string, type: string, values?: string[]): { ok: true; 
   }
 
   if (type === 'number') {
+    if (raw.trim() === '') return { ok: false, error: 'Expected a number, got an empty value' }
     const num = Number(raw)
-    if (Number.isNaN(num)) return { ok: false, error: `Expected a number, got "${raw}"` }
+    if (!Number.isFinite(num)) return { ok: false, error: `Expected a finite number, got "${raw}"` }
     return { ok: true, value: num }
   }
 
   // string, literal, etc. — pass through
   return { ok: true, value: raw }
+}
+
+function normalizeConfigKey(key: string): string {
+  // Keep the documented shorthand while storing the canonical schema key.
+  return key === 'thinking' ? 'alwaysThinkingEnabled' : key
 }
 
 function findKeyInfo(key: string): { info: ConfigKeyInfo; source: 'global' | 'settings' } | null {
@@ -86,7 +93,7 @@ export async function call(
   // key=value path
   if (trimmed.includes('=')) {
     const eqIndex = trimmed.indexOf('=')
-    const key = trimmed.slice(0, eqIndex).trim()
+    const key = normalizeConfigKey(trimmed.slice(0, eqIndex).trim())
     const rawValue = trimmed.slice(eqIndex + 1).trim()
 
     if (!key) {
@@ -116,6 +123,14 @@ export async function call(
       }))
       onDone(`Set ${key} to ${coerced.value}`, { display: 'system' })
     } else {
+      // Re-run the schema validator for the individual field. The settings
+      // writer merges raw JSON and intentionally does not validate writes.
+      const fieldSchema = (SettingsSchema() as { shape?: Record<string, { safeParse?: (value: unknown) => { success: boolean; error?: { message?: string } } }> }).shape?.[key]
+      const validation = fieldSchema?.safeParse?.(coerced.value)
+      if (validation && !validation.success) {
+        onDone(`Invalid value for ${key}: ${validation.error?.message ?? 'does not match the settings schema'}`, { display: 'system' })
+        return null
+      }
       const result = updateSettingsForSource('userSettings', {
         [key]: coerced.value,
       } as unknown as import('../../utils/settings/types.js').SettingsJson)

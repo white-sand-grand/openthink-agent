@@ -1,4 +1,5 @@
 import pkg from '../package.json'
+import { execFileSync } from 'child_process'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { dirname, extname, join, resolve } from 'path'
 
@@ -71,10 +72,13 @@ function collectMissingRelativeImports(): MissingImport[] {
   const missing: MissingImport[] = []
   const seen = new Set<string>()
   const pattern =
-    /(?:import|export)\s+[\s\S]*?from\s+['"](\.\.?\/[^'"]+)['"]|require\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g
+    /(?:import|export)\s+[\s\S]{0,2000}?from\s+['"](\.\.?\/[^'"]+)['"]|require\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g
 
   for (const file of files) {
-    const text = readFileSync(file, 'utf8')
+    // Generated React files can contain multi-megabyte source-map comments.
+    // Never let the import matcher traverse those lines: an unbounded
+    // cross-line expression makes --help/--version appear to hang.
+    const text = readFileSync(file, 'utf8').replace(/^\/\/# sourceMappingURL=.*$/gmu, '')
     for (const match of text.matchAll(pattern)) {
       const specifier = match[1] ?? match[2]
       if (!specifier) continue
@@ -96,7 +100,14 @@ function collectMissingRelativeImports(): MissingImport[] {
 }
 
 const args = process.argv.slice(2)
+const scanStartedAt = Date.now()
+if (process.stderr.isTTY) {
+  process.stderr.write('OpenThink: checking source tree for missing imports...\n')
+}
 const missingImports = collectMissingRelativeImports()
+if (process.stderr.isTTY) {
+  process.stderr.write(`OpenThink: source check complete (${((Date.now() - scanStartedAt) / 1000).toFixed(1)}s)\n`)
+}
 
 if (args.includes('--version')) {
   if (missingImports.length > 0) {
@@ -125,6 +136,18 @@ if (args.includes('--help')) {
   process.exit(0)
 }
 
+if (args.includes('--check-imports')) {
+  if (missingImports.length > 0) {
+    console.error(`missing relative imports: ${missingImports.length}`)
+    for (const item of missingImports) {
+      console.error(`- ${item.importer.replace(`${process.cwd()}/`, '')} -> ${item.specifier}`)
+    }
+    process.exit(1)
+  }
+  console.log('missing relative imports: 0')
+  process.exit(0)
+}
+
 if (missingImports.length > 0) {
   console.log('OpenThink development workspace')
   console.log(`version: ${pkg.version}`)
@@ -140,6 +163,24 @@ if (missingImports.length > 0) {
   process.exit(0)
 }
 
+// WSL terminals launched through some desktop PTYs report an impossible
+// 131072x1 size. Ink then renders an effectively invisible screen. Repair
+// only clearly invalid dimensions and leave normal terminals untouched.
+if (
+  process.stdout.isTTY &&
+  ((process.stdout.columns ?? 0) > 1000 || (process.stdout.rows ?? 0) < 2)
+) {
+  try {
+    execFileSync('stty', ['rows', '40', 'cols', '120'], {
+      stdio: ['/dev/tty', 'ignore', 'ignore'],
+    })
+  } catch {
+    // Some embedded terminals do not expose /dev/tty; the app can still run.
+  }
+}
+
 // Route through the original CLI bootstrap so the exported `main()` is
 // actually invoked. Importing `main.tsx` directly only evaluates the module.
+if (process.stderr.isTTY) process.stderr.write('OpenThink: loading CLI...\n')
 await import('./entrypoints/cli.tsx')
+if (process.stderr.isTTY) process.stderr.write('OpenThink: CLI loaded.\n')

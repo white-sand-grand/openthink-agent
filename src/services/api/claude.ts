@@ -1845,7 +1845,6 @@ async function* queryModel(
       ...(Object.keys(outputConfig).length > 0 && {
         output_config: outputConfig,
       }),
-      ...(speed !== undefined && { speed }),
     }
   }
 

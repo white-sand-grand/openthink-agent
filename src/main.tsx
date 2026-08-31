@@ -2319,6 +2319,7 @@ async function run(): Promise<CommanderCommand> {
       return;
     }
 
+
     // Initialize LSP manager AFTER trust is established (or in non-interactive mode
     // where trust is implicit). This prevents plugin LSP servers from executing
     // code in untrusted directories before user consent.
@@ -2846,6 +2847,10 @@ async function run(): Promise<CommanderCommand> {
         workload: options.workload,
         setupTrigger: setupTrigger ?? undefined,
         sessionStartHooksPromise
+      }).catch(error => {
+        const message = error instanceof Error ? error.stack ?? error.message : String(error)
+        process.stderr.write(`OpenThink headless run failed: ${message}\n`)
+        process.exitCode = 1
       });
       return;
     }
@@ -4594,6 +4599,8 @@ async function logTenguInit({
       })() : {})
     });
   } catch (error) {
+    const fatalMessage = error instanceof Error ? error.stack ?? error.message : String(error)
+    process.stderr.write(`OpenThink main failed: ${fatalMessage}\n`)
     logError(error);
   }
 }

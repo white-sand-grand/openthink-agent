@@ -287,10 +287,15 @@ export function ExitPlanModePermissionRequest({
         interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
         planStructureVariant
       });
+      const launchUltraplan = getLaunchUltraplan();
+      if (!launchUltraplan) {
+        onDone('Ultraplan is unavailable in this build.', { display: 'system' });
+        return;
+      }
       onDone();
       onReject();
       toolUseConfirm.onReject('Plan being refined via Ultraplan — please wait for the result.');
-      void getLaunchUltraplan()!({
+      void launchUltraplan({
         blurb: '',
         seedPlan: currentPlan,
         getAppState: store.getState,

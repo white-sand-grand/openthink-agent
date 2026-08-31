@@ -305,7 +305,7 @@ function NotificationContent({
         </Box>}
       {(apiKeyStatus === 'invalid' || apiKeyStatus === 'missing') && <Box>
           <Text color="error" wrap="truncate">
-            {isEnvTruthy(process.env.OPENTHINK_REMOTE) ? 'Authentication error · Try again' : 'API key not configured · Run /provide'}
+            {isEnvTruthy(process.env.OPENTHINK_REMOTE) ? 'Authentication error · Try again' : 'API key not configured · Set ANTHROPIC_API_KEY or configure apiKeyHelper'}
           </Text>
         </Box>}
       {debug && <Box>

@@ -16,6 +16,7 @@
   },
   "scripts": {
     "dev": "bun run ./src/dev-entry.ts",
+    "check:imports": "bun run ./src/dev-entry.ts --check-imports",
     "start": "bun run ./src/dev-entry.ts",
     "version": "bun run ./src/dev-entry.ts --version"
   },

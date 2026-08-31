@@ -439,6 +439,10 @@ async function checkIdeConnection(
  */
 const getWindowsUserProfile = memoize(async (): Promise<string | undefined> => {
   if (process.env.USERPROFILE) return process.env.USERPROFILE
+  // WSL installations commonly disable Windows PATH interop. In that case
+  // invoking powershell.exe through execa produces a Bun-only readonly-stream
+  // error; getIdeLockfilesPaths() already enumerates /mnt/c/Users below.
+  if (process.env.WSL_INTEROP) return undefined
   const { stdout, code } = await execFileNoThrow('powershell.exe', [
     '-NoProfile',
     '-NonInteractive',

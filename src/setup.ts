@@ -39,6 +39,7 @@ import {
 } from './utils/hooks/hooksConfigSnapshot.js'
 import { hasWorktreeCreateHook } from './utils/hooks.js'
 import { checkAndRestoreITerm2Backup } from './utils/iTermBackup.js'
+import { logForDebugging } from './utils/debug.js'
 import { logError } from './utils/log.js'
 import { getRecentActivity } from './utils/logoV2Utils.js'
 import { lockCurrentVersion } from './utils/nativeInstaller/index.js'
@@ -155,21 +156,25 @@ export async function setup(
       // Log but don't crash if Terminal.app backup restoration fails
       logError(error)
     }
+    logForDebugging('[STARTUP] terminal recovery checks complete')
   }
 
   // IMPORTANT: setCwd() must be called before any other code that depends on the cwd
   setCwd(cwd)
+  logForDebugging('[STARTUP] setCwd complete')
 
   // Capture hooks configuration snapshot to avoid hidden hook modifications.
   // IMPORTANT: Must be called AFTER setCwd() so hooks are loaded from the correct directory
   const hooksStart = Date.now()
   captureHooksConfigSnapshot()
+  logForDebugging('[STARTUP] hooks snapshot complete')
   logForDiagnosticsNoPII('info', 'setup_hooks_captured', {
     duration_ms: Date.now() - hooksStart,
   })
 
   // Initialize FileChanged hook watcher — sync, reads hook config snapshot
   initializeFileChangedWatcher(cwd)
+  logForDebugging('[STARTUP] file watcher complete')
 
   // Handle worktree creation if requested
   // IMPORTANT: this must be called befiore getCommands(), otherwise /eject won't be available.

@@ -86,14 +86,6 @@ export function PromptInputHelpMenu(props) {
     t11 = $[11];
   }
   const modelPickerShortcut = t11;
-  let t13;
-  if ($[12] !== t12) {
-    t13 = formatShortcut(t12);
-    $[12] = t12;
-    $[13] = t13;
-  } else {
-    t13 = $[13];
-  }
   const t14 = useShortcutDisplay("chat:externalEditor", "Chat", "ctrl+g");
   let t15;
   if ($[14] !== t14) {

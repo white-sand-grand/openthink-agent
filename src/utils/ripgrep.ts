@@ -1,5 +1,6 @@
 import type { ChildProcess, ExecFileException } from 'child_process'
 import { execFile, spawn } from 'child_process'
+import { existsSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
 import * as path from 'path'
@@ -60,6 +61,16 @@ const getRipgrepConfig = memoize((): RipgrepConfig => {
     process.platform === 'win32'
       ? path.resolve(rgRoot, `${process.arch}-win32`, 'rg.exe')
       : path.resolve(rgRoot, `${process.arch}-${process.platform}`, 'rg')
+
+  // Development/restored workspaces may not include the platform vendored
+  // binary. Fall back to a resolved system rg instead of failing asynchronously
+  // during startup telemetry and context collection.
+  if (!existsSync(command)) {
+    const { cmd: systemPath } = findExecutable('rg', [])
+    if (systemPath === 'rg' || existsSync(systemPath)) {
+      return { mode: 'system', command: 'rg', args: [] }
+    }
+  }
 
   return { mode: 'builtin', command, args: [] }
 })

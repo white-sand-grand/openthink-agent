@@ -30,7 +30,7 @@ function load(): Record<string, string> {
     if (existsSync(path)) {
       const parsed = JSON.parse(readFileSync(path, 'utf8'))
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const out: Record<string, string> = {}
+        const out: Record<string, string> = Object.create(null) as Record<string, string>
         for (const [k, v] of Object.entries(parsed)) {
           if (typeof v === 'string') out[k] = v
         }
@@ -68,10 +68,15 @@ function persist(data: Record<string, string>): void {
 }
 
 export function getProviderKey(providerId: string): string | undefined {
-  return load()[providerId]
+  return Object.prototype.hasOwnProperty.call(load(), providerId)
+    ? load()[providerId]
+    : undefined
 }
 
 export function setProviderKey(providerId: string, apiKey: string): void {
+  if (!providerId || providerId === '__proto__' || providerId === 'prototype' || providerId === 'constructor') {
+    throw new Error('Invalid provider ID')
+  }
   // Header-injection guard: the key ends up in Authorization/x-api-key
   // headers, so reject anything with control characters or line breaks.
   if (/[\x00-\x1F\x7F]/.test(apiKey)) {
