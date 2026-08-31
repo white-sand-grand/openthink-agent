@@ -14,6 +14,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 用户在 **Windows 11 + Git Bash** 上运行,WSL2 系统映射。有些情况可能不适配,**第一时间告诉用户**。
 
+### Bun 位置与运行方式
+
+- 项目命令统一在 **WSL Ubuntu-22.04** 中运行;当前 Bun 可执行文件为 `/home/white-sand/.bun/bin/bun`(已验证版本 1.3.11)。
+- WSL 中运行项目前先设置 PATH:
+
+```bash
+export PATH=/home/white-sand/.bun/bin:$PATH
+cd /mnt/d/Download_Data_D/openthink-agent
+```
+
+- 从 Windows PowerShell 调用 WSL 命令时使用:
+  `wsl.exe -d Ubuntu-22.04 -e bash -lc 'export PATH=/home/white-sand/.bun/bin:$PATH; cd /mnt/d/Download_Data_D/openthink-agent; bun run dev'`
+- Windows PowerShell 当前没有独立的 `bun` PATH 条目,不要在 Windows shell 中直接假定 `bun` 可用。
+
 ## 命令
 
 ```bash
