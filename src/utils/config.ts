@@ -331,7 +331,6 @@ export type GlobalConfig = {
       timestamp: number
     }
   >
-  overageCreditUpsellSeenCount?: number // Number of times the overage credit upsell has been shown
   hasVisitedExtraUsage?: boolean // Whether the user has visited /extra-usage — hides credit upsells
 
   // Voice mode notice tracking

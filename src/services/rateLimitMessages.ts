@@ -277,10 +277,7 @@ function getWarningUpsellText(
       return null
     }
 
-    // Pro/Max users: prompt to upgrade
-    if (subscriptionType === 'pro' || subscriptionType === 'max') {
-      return '/upgrade to keep using OpenThink'
-    }
+    // Pro/Max users receive the standard limit message without a sales prompt.
   }
 
   // Overage warning (approaching spending limit)
