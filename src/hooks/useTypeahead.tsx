@@ -13,7 +13,6 @@ import { KeyboardEvent } from '../ink/events/keyboard-event.js';
 import { useInput } from '../ink.js';
 import { useOptionalKeybindingContext, useRegisterKeybindingContext } from '../keybindings/KeybindingContext.js';
 import { useKeybindings } from '../keybindings/useKeybinding.js';
-import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
 import { useAppState, useAppStateStore } from '../state/AppState.js';
 import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js';
 import type { InlineGhostText, PromptInputMode } from '../types/textInputTypes.js';
@@ -372,7 +371,6 @@ export function useTypeahead({
   const {
     addNotification
   } = useNotifications();
-  const thinkingToggleShortcut = useShortcutDisplay('chat:thinkingToggle', 'Chat', 'alt+t');
   const [suggestionType, setSuggestionType] = useState<SuggestionType>('none');
 
   // Compute max column width from ALL commands once (not filtered results)
@@ -1320,13 +1318,13 @@ export function useTypeahead({
         acceptSuggestionText(suggestionText);
         return;
       }
-      // Remind user about thinking toggle shortcut if empty input
+      // Keep the effort command discoverable when the prompt is empty.
       if (input.trim() === '') {
         e.preventDefault();
         addNotification({
-          key: 'thinking-toggle-hint',
+          key: 'effort-command-hint',
           jsx: <Text dimColor>
-              Use {thinkingToggleShortcut} to toggle thinking
+              Use /effort to set the thinking level
             </Text>,
           priority: 'immediate',
           timeoutMs: 3000

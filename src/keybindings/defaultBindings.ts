@@ -68,7 +68,6 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'ctrl+x ctrl+k': 'chat:killAgents',
       [MODE_CYCLE_KEY]: 'chat:cycleMode',
       'meta+p': 'chat:modelPicker',
-      'meta+t': 'chat:thinkingToggle',
       enter: 'chat:submit',
       up: 'history:previous',
       down: 'history:next',
@@ -303,14 +302,6 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       down: 'diff:nextFile',
       enter: 'diff:viewDetails',
       // Note: diff:back is handled by left arrow in detail mode
-    },
-  },
-  // Model picker effort cycling (ant-only)
-  {
-    context: 'ModelPicker',
-    bindings: {
-      left: 'modelPicker:decreaseEffort',
-      right: 'modelPicker:increaseEffort',
     },
   },
   // Select component navigation (used by /model, /resume, permission prompts, etc.)

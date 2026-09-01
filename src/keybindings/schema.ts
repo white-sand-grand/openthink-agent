@@ -82,7 +82,6 @@ export const KEYBINDING_ACTIONS = [
   'chat:killAgents',
   'chat:cycleMode',
   'chat:modelPicker',
-  'chat:thinkingToggle',
   'chat:submit',
   'chat:newline',
   'chat:undo',
@@ -149,9 +148,6 @@ export const KEYBINDING_ACTIONS = [
   'diff:viewDetails',
   'diff:previousFile',
   'diff:nextFile',
-  // Model picker actions (ant-only)
-  'modelPicker:decreaseEffort',
-  'modelPicker:increaseEffort',
   // Select component actions (distinct from confirm: to avoid collisions)
   'select:next',
   'select:previous',

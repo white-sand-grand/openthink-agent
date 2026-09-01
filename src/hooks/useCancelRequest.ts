@@ -123,7 +123,7 @@ export function CancelRequestHandler(props: CancelRequestHandlerProps): null {
 
   // Determine if this handler should be active
   // Other contexts (Transcript, HistorySearch, Help) have their own escape handlers
-  // Overlays (ModelPicker, ThinkingToggle, etc.) register themselves via useRegisterOverlay
+  // Overlays (ModelPicker and other dialogs) register themselves via useRegisterOverlay
   // Local JSX commands (like /model, /btw) handle their own input
   const isOverlayActive = useIsOverlayActive()
   const canCancelRunningTask = abortSignal !== undefined && !abortSignal.aborted

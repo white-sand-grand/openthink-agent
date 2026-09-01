@@ -245,11 +245,10 @@ export async function handlePromptSubmit(
           getCommandName(cmd) === commandName),
     )
 
-    if (
-      immediateCommand &&
-      immediateCommand.type === 'local-jsx' &&
-      (queryGuard.isActive || isExternalLoading)
-    ) {
+    if (immediateCommand && immediateCommand.type === 'local-jsx') {
+      // Dispatch immediate local commands before reserving queryGuard. The
+      // reservation drives isLoading, so routing /exit (and similar commands)
+      // through executeUserInput first produces a one-frame spinner flash.
       logEvent('tengu_immediate_command_executed', {
         commandName:
           immediateCommand.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
