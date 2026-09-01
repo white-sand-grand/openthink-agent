@@ -63,6 +63,11 @@ export default function TextInput(props: Props): React.ReactNode {
   // driving TextInput re-renders at 50ms during warmup (while spaces
   // are simultaneously arriving every 30-80ms) causes visible stutter.
   const canShowCursor = isTerminalFocused && !accessibilityEnabled;
+  // Some legacy dialogs do not provide cursor bookkeeping. Keep those
+  // inputs usable (especially backspace/Delete) instead of passing undefined
+  // into Cursor, which would produce a NaN offset.
+  const cursorOffset = props.cursorOffset ?? props.value.length;
+  const onChangeCursorOffset = props.onChangeCursorOffset ?? (() => {});
   let invert: (text: string) => string;
   if (!canShowCursor) {
     invert = (text: string) => text;
@@ -111,8 +116,8 @@ export default function TextInput(props: Props): React.ReactNode {
     onImagePaste: props.onImagePaste,
     disableCursorMovementForUpDownKeys: props.disableCursorMovementForUpDownKeys,
     disableEscapeDoublePress: props.disableEscapeDoublePress,
-    externalOffset: props.cursorOffset,
-    onOffsetChange: props.onChangeCursorOffset,
+    externalOffset: cursorOffset,
+    onOffsetChange: onChangeCursorOffset,
     inputFilter: props.inputFilter,
     inlineGhostText: props.inlineGhostText,
     dim: chalk.dim

@@ -11,7 +11,7 @@ import { getGlobalConfig } from '../utils/config.js';
 import { isFullscreenActive } from '../utils/fullscreen.js';
 import type { Theme } from '../utils/theme.js';
 import { getCompanion } from './companion.js';
-import { renderFace, renderSprite, spriteFrameCount } from './sprites.js';
+import { Orb } from '../components/LogoV2/Orb.js';
 import { RARITY_COLORS } from './types.js';
 const TICK_MS = 500;
 const BUBBLE_SHOW = 20; // ticks → ~10s at 500ms
@@ -30,11 +30,12 @@ function wrap(text: string, width: number): string[] {
   const lines: string[] = [];
   let cur = '';
   for (const w of words) {
-    if (cur.length + w.length + 1 > width && cur) {
+    const candidate = cur ? `${cur} ${w}` : w;
+    if (stringWidth(candidate) > width && cur) {
       lines.push(cur);
       cur = w;
     } else {
-      cur = cur ? `${cur} ${w}` : w;
+      cur = candidate;
     }
   }
   if (cur) lines.push(cur);
@@ -230,33 +231,15 @@ export function CompanionSprite(): React.ReactNode {
     return <Box paddingX={1} alignSelf="flex-end">
         <Text>
           {petting && <Text color="autoAccept">{figures.heart} </Text>}
-          <Text bold color={color}>
-            {renderFace(companion)}
-          </Text>{' '}
+          <Text bold color="mascot_body">◉</Text>{' '}
           <Text italic dimColor={!focused && !reaction} bold={focused} inverse={focused && !reaction} color={reaction ? fading ? 'inactive' : color : focused ? color : undefined}>
             {label}
           </Text>
         </Text>
       </Box>;
   }
-  const frameCount = spriteFrameCount(companion.species);
   const heartFrame = petting ? PET_HEARTS[petAge % PET_HEARTS.length] : null;
-  let spriteFrame: number;
-  let blink = false;
-  if (reaction || petting) {
-    // Excited: cycle all fidget frames fast
-    spriteFrame = tick % frameCount;
-  } else {
-    const step = IDLE_SEQUENCE[tick % IDLE_SEQUENCE.length]!;
-    if (step === -1) {
-      spriteFrame = 0;
-      blink = true;
-    } else {
-      spriteFrame = step % frameCount;
-    }
-  }
-  const body = renderSprite(companion, spriteFrame).map(line => blink ? line.replaceAll(companion.eye, '-') : line);
-  const sprite = heartFrame ? [heartFrame, ...body] : body;
+  const blink = !reaction && !petting && IDLE_SEQUENCE[tick % IDLE_SEQUENCE.length] === -1;
 
   // Name row doubles as hint row — unfocused shows dim name + ↓ discovery,
   // focused shows inverse name. The enter-to-open hint lives in
@@ -264,9 +247,8 @@ export function CompanionSprite(): React.ReactNode {
   // sprite doesn't jump up when selected. flexShrink=0 stops the
   // inline-bubble row wrapper from squeezing the sprite to fit.
   const spriteColumn = <Box flexDirection="column" flexShrink={0} alignItems="center" width={colWidth}>
-      {sprite.map((line, i) => <Text key={i} color={i === 0 && heartFrame ? 'autoAccept' : color}>
-          {line}
-        </Text>)}
+      {heartFrame && <Text color="autoAccept">{heartFrame}</Text>}
+      <Orb pose={blink ? 'blink' : reaction || petting ? 'look-right' : 'default'} />
       <Text italic bold={focused} dimColor={!focused} color={focused ? color : undefined} inverse={focused}>
         {focused ? ` ${companion.name} ` : companion.name}
       </Text>

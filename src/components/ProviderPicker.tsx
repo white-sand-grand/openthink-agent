@@ -114,7 +114,15 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
   const [view, setView] = useState<View>({
     type: 'list'
   });
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValueState] = useState('');
+  const [cursorOffset, setCursorOffset] = useState(0);
+  // Keep programmatic values (template URL, stored key, edited URL) aligned
+  // with the controlled input cursor. User edits update the offset afterward
+  // through TextInput's onChangeCursorOffset callback.
+  const setInputValue = (value: string): void => {
+    setInputValueState(value);
+    setCursorOffset(value.length);
+  };
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const activeId = getActiveProviderId();
@@ -302,7 +310,7 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
           <Text color="remember" bold>提供商 Base URL</Text>
           <Text dimColor>Anthropic 兼容(…/anthropic)或 OpenAI 兼容(…/v1)均可,保存时自动识别协议。回车继续。</Text>
         </Box>
-        <TextInput focus placeholder="https://…" value={inputValue} onChange={setInputValue} onSubmit={async () => {
+        <TextInput focus placeholder="https://…" value={inputValue} onChange={setInputValue} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} onSubmit={async () => {
         const baseUrl = inputValue.trim().replace(/\/+$/, '');
         if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
           setStatus('URL 需以 http(s):// 开头');
@@ -334,7 +342,7 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
           <Text color="remember" bold>{view.draft.name || '提供商'} · API Key</Text>
           <Text dimColor>粘贴 API Key 后回车。Key 仅保存在本机密钥文件({getKeysHint()}),不会写入项目或 settings.json。空输入回车{stored ? `沿用已存 Key(${maskKey(stored)})` : '返回'}。</Text>
         </Box>
-        <TextInput focus mask="*" placeholder={stored ? `已存: ${maskKey(stored)} — 直接回车沿用` : '粘贴 API Key…'} value={inputValue} onChange={setInputValue} onSubmit={async () => {
+        <TextInput focus mask="*" placeholder={stored ? `已存: ${maskKey(stored)} — 直接回车沿用` : '粘贴 API Key…'} value={inputValue} onChange={setInputValue} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} onSubmit={async () => {
         const key = inputValue.trim();
         if (!key && !stored) return;
         const finalKey = key || stored || '';
@@ -433,7 +441,7 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
           <Text color="remember" bold>添加模型 ID</Text>
           <Text dimColor>输入该端点的模型 ID(如 gpt-4o / glm-4.6 / a-model),回车添加;留空回车返回。</Text>
         </Box>
-        <TextInput focus placeholder="model-id…" value={inputValue} onChange={setInputValue} onSubmit={() => {
+        <TextInput focus placeholder="model-id…" value={inputValue} onChange={setInputValue} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} onSubmit={() => {
         const modelId = inputValue.trim();
         if (!modelId) {
           setView({
@@ -567,7 +575,7 @@ export function ProviderPicker({ onBack, onPicked, standalone }: ProviderPickerP
             <Text color="remember" bold={true}>输入 {view.slot} 槽模型 ID</Text>
             <Text dimColor={true}>{entry ? `来自提供商 ${entry.name};` : '该槽未绑定提供商 — 输入模型 ID,跟随当前激活提供商。'}回车保存,留空返回。</Text>
           </Box>
-          <TextInput focus={true} placeholder="model-id…" value={inputValue} onChange={setInputValue} onSubmit={() => {
+          <TextInput focus={true} placeholder="model-id…" value={inputValue} onChange={setInputValue} cursorOffset={cursorOffset} onChangeCursorOffset={setCursorOffset} onSubmit={() => {
           const modelId = inputValue.trim();
           if (!modelId) {
             setView({

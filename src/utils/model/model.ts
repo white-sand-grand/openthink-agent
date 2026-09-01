@@ -21,7 +21,6 @@ import {
 import { isEnvTruthy } from '../envUtils.js'
 import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
 import { getSlotUserModel } from './slots.js'
-import { formatModelPricing, getOpus46CostTier } from '../modelCost.js'
 import { getSettings_DEPRECATED } from '../settings/settings.js'
 import type { PermissionMode } from '../permissions/PermissionMode.js'
 import { getAPIProvider } from './providers.js'
@@ -332,11 +331,11 @@ export function getCanonicalName(fullModelName: ModelName): ModelShortName {
 export function getClaudeAiUserDefaultModelDescription(): string {
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
     if (isOpus1mMergeEnabled()) {
-      return 'Opus 4.6 with 1M context · Most capable for complex work'
+      return 'Opus 4.6 with 1M context'
     }
-    return 'Opus 4.6 · Most capable for complex work'
+    return 'Opus 4.6'
   }
-  return 'Sonnet 4.6 · Best for everyday tasks'
+  return 'Sonnet 4.6'
 }
 
 export function renderDefaultModelSetting(
@@ -349,8 +348,7 @@ export function renderDefaultModelSetting(
 }
 
 export function getOpus46PricingSuffix(): string {
-  if (getAPIProvider() !== 'firstParty') return ''
-  return ` · ${formatModelPricing(getOpus46CostTier(false))}`
+  return ''
 }
 
 export function isOpus1mMergeEnabled(): boolean {

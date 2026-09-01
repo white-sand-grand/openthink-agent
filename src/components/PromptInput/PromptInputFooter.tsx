@@ -1,12 +1,13 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
-import { memo, type ReactNode, useMemo, useRef } from 'react';
+import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { isBridgeEnabled } from '../../bridge/bridgeEnabled.js';
 import { getBridgeStatus } from '../../bridge/bridgeStatusUtil.js';
 import { useSetPromptOverlay } from '../../context/promptOverlayContext.js';
 import type { VerificationStatus } from '../../hooks/useApiKeyVerification.js';
 import type { IDESelection } from '../../hooks/useIdeSelection.js';
 import { useSettings } from '../../hooks/useSettings.js';
+import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { Box, Text } from '../../ink.js';
 import type { MCPServerConnection } from '../../services/mcp/types.js';
@@ -17,6 +18,11 @@ import type { PromptInputMode, VimMode } from '../../types/textInputTypes.js';
 import type { AutoUpdaterResult } from '../../utils/autoUpdater.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import { isUndercover } from '../../utils/undercover.js';
+import { getDisplayedEffortLevel, modelSupportsEffort } from '../../utils/effort.js';
+import { formatNumber } from '../../utils/format.js';
+import { getLastAssistantMessage } from '../../utils/messages.js';
+import { getAssistantMessageContentLength, getCurrentUsage, getTokenUsage } from '../../utils/tokens.js';
+import { renderModelName } from '../../utils/model/model.js';
 import { CoordinatorTaskPanel, useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from '../StatusLine.js';
 import { Notifications } from './Notifications.js';
@@ -59,6 +65,7 @@ type Props = {
   setHistoryQuery: (query: string) => void;
   historyFailedMatch: boolean;
   onOpenTasksDialog?: (taskId?: string) => void;
+  onOpenModelPicker?: () => void;
 };
 function PromptInputFooter({
   apiKeyStatus,
@@ -92,7 +99,8 @@ function PromptInputFooter({
   historyQuery,
   setHistoryQuery,
   historyFailedMatch,
-  onOpenTasksDialog
+  onOpenTasksDialog,
+  onOpenModelPicker
 }: Props): ReactNode {
   const settings = useSettings();
   const {
@@ -117,6 +125,7 @@ function PromptInputFooter({
   const coordinatorTaskCount = useCoordinatorTaskCount();
   const coordinatorTaskIndex = useAppState(s => s.coordinatorTaskIndex);
   const pillSelected = tasksSelected && (coordinatorTaskCount === 0 || coordinatorTaskIndex < 0);
+  const mainLoopModel = useMainLoopModel();
 
   // Hide `? for shortcuts` if the user has a custom status line, or during ctrl-r
   const suppressHint = suppressHintFromProps || statusLineShouldDisplay(settings) || isSearching;
@@ -136,21 +145,120 @@ function PromptInputFooter({
     return <PromptInputHelpMenu dimColor={true} fixedWidth={true} paddingX={2} />;
   }
   return <>
-      <Box flexDirection={isNarrow ? 'column' : 'row'} justifyContent={isNarrow ? 'flex-start' : 'space-between'} paddingX={2} gap={isNarrow ? 0 : 1}>
+      <Box flexDirection={isNarrow ? 'column' : 'row'} justifyContent={isNarrow ? 'flex-start' : 'space-between'} paddingX={2} gap={isNarrow ? 0 : 2}>
         <Box flexDirection="column" flexShrink={isNarrow ? 0 : 1}>
           {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && statusLineShouldDisplay(settings) && <StatusLine messagesRef={messagesRef} lastAssistantMessageId={lastAssistantMessageId} vimMode={vimMode} />}
           <PromptInputFooterLeftSide exitMessage={exitMessage} vimMode={vimMode} mode={mode} toolPermissionContext={toolPermissionContext} suppressHint={suppressHint} isLoading={isLoading} tasksSelected={pillSelected} teamsSelected={teamsSelected} teammateFooterIndex={teammateFooterIndex} tmuxSelected={tmuxSelected} isPasting={isPasting} isSearching={isSearching} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={onOpenTasksDialog} />
         </Box>
-        <Box flexShrink={1} gap={1}>
-          {isFullscreen ? null : <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} isNarrow={isNarrow} />}
-          {"external" === 'ant' && isUndercover() && <Text dimColor>undercover</Text>}
-          <BridgeStatusIndicator bridgeSelected={bridgeSelected} />
+        <Box flexDirection="column" alignItems="flex-end" flexShrink={1} gap={isNarrow ? 0 : 1}>
+          {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && <SessionStatusBar messages={messages} model={mainLoopModel} isLoading={isLoading} onOpenModelPicker={onOpenModelPicker} />}
+          <Box flexShrink={1} gap={1}>
+            {isFullscreen ? null : <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} isNarrow={isNarrow} />}
+            {"external" === 'ant' && isUndercover() && <Text dimColor>undercover</Text>}
+            <BridgeStatusIndicator bridgeSelected={bridgeSelected} />
+          </Box>
         </Box>
       </Box>
       {"external" === 'ant' && <CoordinatorTaskPanel />}
     </>;
 }
 export default memo(PromptInputFooter);
+
+type SessionStatusBarProps = {
+  messages: Message[];
+  model: string;
+  isLoading: boolean;
+  onOpenModelPicker?: () => void;
+};
+
+/**
+ * Compact session telemetry modeled after OpenCode's persistent footer. It is
+ * intentionally derived from the same message stream used by the prompt and
+ * never starts a second usage request.
+ */
+function SessionStatusBar({
+  messages,
+  model,
+  isLoading,
+  onOpenModelPicker,
+}: SessionStatusBarProps): React.ReactNode {
+  const [clock, setClock] = useState(() => Date.now());
+  const loadingRef = useRef(false);
+  const speedStateRef = useRef<{ assistantId?: string; baselineTokens: number; startedAt: number; speed: number | null }>({
+    baselineTokens: 0,
+    startedAt: 0,
+    speed: null,
+  });
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = setInterval(() => setClock(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [isLoading]);
+  const effortValue = useAppState((state) => state.effortValue);
+  const thinkingEnabled = useAppState((state) => state.thinkingEnabled);
+  const usage = getCurrentUsage(messages);
+  const lastAssistant = getLastAssistantMessage(messages);
+  const assistantUsage = lastAssistant ? getTokenUsage(lastAssistant) : undefined;
+  const estimatedOutputTokens = lastAssistant
+    ? Math.round(getAssistantMessageContentLength(lastAssistant) / 4)
+    : 0;
+  const outputTokens = assistantUsage && assistantUsage.output_tokens > 0
+    ? assistantUsage.output_tokens
+    : estimatedOutputTokens;
+  const contextTokens = usage
+    ? usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens + usage.output_tokens
+    : 0;
+  const effort = modelSupportsEffort(model)
+    ? getDisplayedEffortLevel(model, effortValue)
+    : undefined;
+  const modelLabel = renderModelName(model);
+  const assistantId = lastAssistant?.uuid ??
+    (lastAssistant?.message as { id?: string } | undefined)?.id;
+  if (isLoading && !loadingRef.current) {
+    // Do not count the previous completed response while a new request is starting.
+    speedStateRef.current = { assistantId, baselineTokens: outputTokens, startedAt: 0, speed: null };
+  }
+  loadingRef.current = isLoading;
+  if (isLoading) {
+    if (assistantId !== speedStateRef.current.assistantId || outputTokens < speedStateRef.current.baselineTokens) {
+      speedStateRef.current = { assistantId, baselineTokens: 0, startedAt: 0, speed: null };
+    }
+    const generatedTokens = Math.max(0, outputTokens - speedStateRef.current.baselineTokens);
+    if (generatedTokens > 0 && speedStateRef.current.startedAt === 0) {
+      speedStateRef.current.startedAt = clock;
+    }
+    if (generatedTokens > 0 && speedStateRef.current.startedAt > 0) {
+      const elapsedSeconds = Math.max(0.25, (clock - speedStateRef.current.startedAt) / 1000);
+      speedStateRef.current.speed = generatedTokens / elapsedSeconds;
+    }
+  }
+  const speed = speedStateRef.current.speed;
+
+  return <Box flexDirection="column" width="100%">
+      <Box flexDirection="row" justifyContent="flex-end" width="100%" gap={1}>
+        <Box onClick={onOpenModelPicker} flexShrink={1}>
+          <Text color="remember" wrap="truncate-end">model:{modelLabel}</Text>
+          {onOpenModelPicker && <Text dimColor>⌄</Text>}
+        </Box>
+        <Text dimColor>·</Text>
+        <Text color={thinkingEnabled === false ? 'subtle' : 'claude'}>
+          thinking:{thinkingEnabled === false ? 'off' : effort ?? 'on'}
+        </Text>
+      </Box>
+      <Box flexDirection="row" flexWrap="wrap" gap={1}>
+        <Text dimColor>context:{formatCompactTokens(contextTokens)}</Text>
+        <Text dimColor>output:{formatCompactTokens(outputTokens)}</Text>
+        <Text color={speed === null ? 'subtle' : 'success'}>recent:{speed === null ? '--' : `${speed.toFixed(speed >= 100 ? 0 : 1)} tok/s`}</Text>
+      </Box>
+    </Box>;
+}
+
+function formatCompactTokens(tokens: number): string {
+  if (tokens < 1000) return formatNumber(tokens);
+  if (tokens < 1_000_000) return `${(tokens / 1000).toFixed(tokens < 10_000 ? 1 : 0)}k`;
+  return `${(tokens / 1_000_000).toFixed(1)}m`;
+}
+
 type BridgeStatusProps = {
   bridgeSelected: boolean;
 };

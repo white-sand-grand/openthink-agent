@@ -19,7 +19,9 @@ const MAX_LEFT_WIDTH = 50
 const MAX_USERNAME_LENGTH = 20
 const BORDER_PADDING = 4
 const DIVIDER_WIDTH = 1
-const CONTENT_PADDING = 2
+// Horizontal content now has two columns of breathing room on each side.
+// Keep layout arithmetic aligned with the Box padding used by LogoV2.
+const CONTENT_PADDING = 4
 
 export type LayoutMode = 'horizontal' | 'compact'
 

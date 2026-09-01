@@ -15,6 +15,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "build": "bun build ./src/main.tsx --outdir dist --target bun",
     "dev": "bun run ./src/dev-entry.ts",
     "check:imports": "bun run ./src/dev-entry.ts --check-imports",
     "start": "bun run ./src/dev-entry.ts",

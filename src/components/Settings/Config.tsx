@@ -1367,7 +1367,7 @@ export function Config({
             </Text>
           </Box>
         </> : showSubmenu === 'Model' ? <>
-          <ModelPicker initial={mainLoopModel} onSelect={(model_0, _effort) => {
+          <ModelPicker initial={mainLoopModel} onSelect={model_0 => {
         isDirty.current = true;
         onChangeMainModelConfig(model_0);
         setShowSubmenu(null);
@@ -1383,7 +1383,7 @@ export function Config({
             </Byline>
           </Text>
         </> : showSubmenu === 'TeammateModel' ? <>
-          <ModelPicker initial={globalConfig.teammateDefaultModel ?? null} skipSettingsWrite headerText="Default model for newly spawned teammates. The leader can override via the tool call's model parameter." onSelect={(model_1, _effort_0) => {
+          <ModelPicker initial={globalConfig.teammateDefaultModel ?? null} headerText="Default model for newly spawned teammates. The leader can override via the tool call's model parameter." onSelect={model_1 => {
         setShowSubmenu(null);
         setTabsHidden(false);
         // First-open-then-Enter from unset: picker highlights "Default"

@@ -7,9 +7,9 @@ import { stringWidth } from '../../ink/stringWidth.js';
 import { getLayoutMode, calculateLayoutDimensions, calculateOptimalLeftWidth, formatWelcomeMessage, truncatePath, getRecentActivitySync, getRecentReleaseNotesSync, getLogoDisplayData } from '../../utils/logoV2Utils.js';
 import { truncate } from '../../utils/format.js';
 import { getDisplayPath } from '../../utils/file.js';
-import { Shrimp } from './Shrimp.js';
+import { Orb } from './Orb.js';
 import { FeedColumn } from './FeedColumn.js';
-import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed, createGuestPassesFeed } from './feedConfigs.js';
+import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed } from './feedConfigs.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';
 import { getInitialSettings } from 'src/utils/settings/settings.js';
@@ -36,8 +36,6 @@ import { feature } from 'bun:bundle';
 const ChannelsNoticeModule = feature('KAIROS') || feature('KAIROS_CHANNELS') ? require('./ChannelsNotice.js') as typeof import('./ChannelsNotice.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
-import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from './GuestPassesUpsell.js';
-import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from './OverageCreditUpsell.js';
 import { plural } from '../../utils/stringUtils.js';
 import { useAppState } from '../../state/AppState.js';
 import { getEffortSuffix } from '../../utils/effort.js';
@@ -67,8 +65,6 @@ export function LogoV2() {
     t1 = $[1];
   }
   const showSandboxStatus = t1;
-  const showGuestPassesUpsell = useShowGuestPassesUpsell();
-  const showOverageCreditUpsell = useShowOverageCreditUpsell();
   const agent = useAppState(_temp);
   const effortValue = useAppState(_temp2);
   const config = getGlobalConfig();
@@ -121,41 +117,6 @@ export function LogoV2() {
     t4 = $[5];
   }
   const isCondensedMode = t4;
-  let t5;
-  let t6;
-  if ($[6] !== showGuestPassesUpsell) {
-    t5 = () => {
-      if (showGuestPassesUpsell && !showOnboarding && !isCondensedMode) {
-        incrementGuestPassesSeenCount();
-      }
-    };
-    t6 = [showGuestPassesUpsell, showOnboarding, isCondensedMode];
-    $[6] = showGuestPassesUpsell;
-    $[7] = t5;
-    $[8] = t6;
-  } else {
-    t5 = $[7];
-    t6 = $[8];
-  }
-  useEffect(t5, t6);
-  let t7;
-  let t8;
-  if ($[9] !== showGuestPassesUpsell || $[10] !== showOverageCreditUpsell) {
-    t7 = () => {
-      if (showOverageCreditUpsell && !showOnboarding && !showGuestPassesUpsell && !isCondensedMode) {
-        incrementOverageCreditUpsellSeenCount();
-      }
-    };
-    t8 = [showOverageCreditUpsell, showOnboarding, showGuestPassesUpsell, isCondensedMode];
-    $[9] = showGuestPassesUpsell;
-    $[10] = showOverageCreditUpsell;
-    $[11] = t7;
-    $[12] = t8;
-  } else {
-    t7 = $[11];
-    t8 = $[12];
-  }
-  useEffect(t7, t8);
   const model = useMainLoopModel();
   const fullModelDisplayName = renderModelSetting(model);
   const {
@@ -252,7 +213,7 @@ export function LogoV2() {
   const compactBorderTitle = color("claude", userTheme)(" OpenThink ");
   if (layoutMode === "compact") {
     let welcomeMessage = formatWelcomeMessage(username);
-    if (stringWidth(welcomeMessage) > columns - 4) {
+    if (stringWidth(welcomeMessage) > columns - 6) {
       let t11;
       if ($[31] === Symbol.for("react.memo_cache_sentinel")) {
         t11 = formatWelcomeMessage(null);
@@ -262,7 +223,7 @@ export function LogoV2() {
       }
       welcomeMessage = t11;
     }
-    const cwdAvailableWidth = agentName ? columns - 4 - 1 - stringWidth(agentName) - 3 : columns - 4;
+    const cwdAvailableWidth = agentName ? columns - 6 - 1 - stringWidth(agentName) - 3 : columns - 6;
     const truncatedCwd = truncatePath(cwd, Math.max(cwdAvailableWidth, 10));
     let t11;
     if ($[32] !== compactBorderTitle) {
@@ -279,7 +240,7 @@ export function LogoV2() {
     }
     let t12;
     if ($[34] === Symbol.for("react.memo_cache_sentinel")) {
-      t12 = <Box marginY={1}><Shrimp /></Box>;
+      t12 = <Box marginY={1}><Orb /></Box>;
       $[34] = t12;
     } else {
       t12 = $[34];
@@ -326,7 +287,7 @@ export function LogoV2() {
       t18 = $[42];
       t19 = $[43];
     }
-    return <><OffscreenFreeze><Box flexDirection="column" borderStyle="round" borderColor="claude" borderText={t11} paddingX={1} paddingY={1} alignItems="center" width={columns}><Text bold={true}>{welcomeMessage}</Text>{t12}{t13}<Text dimColor={true}>{billingType}</Text><Text dimColor={true}>{agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd}</Text></Box></OffscreenFreeze>{t14}{t15}{t16}{t17}{t18}{t19}</>;
+    return <><OffscreenFreeze><Box flexDirection="column" borderStyle="round" borderColor="claude" borderText={t11} paddingX={2} paddingY={1} alignItems="center" width={columns}><Text bold={true}>{welcomeMessage}</Text>{t12}{t13}<Text dimColor={true}>{billingType}</Text><Text dimColor={true}>{agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd}</Text></Box></OffscreenFreeze>{t14}{t15}{t16}{t17}{t18}{t19}</>;
   }
   const welcomeMessage_0 = formatWelcomeMessage(username);
   const modelLine = !process.env.IS_DEMO && config.oauthAccount?.organizationName ? `${modelDisplayName} · ${billingType} · ${config.oauthAccount.organizationName}` : `${modelDisplayName} · ${billingType}`;
@@ -370,7 +331,7 @@ export function LogoV2() {
   }
   let t19;
   if ($[48] === Symbol.for("react.memo_cache_sentinel")) {
-    t19 = <Shrimp />;
+    t19 = <Orb />;
     $[48] = t19;
   } else {
     t19 = $[48];
@@ -418,10 +379,10 @@ export function LogoV2() {
   } else {
     t24 = $[61];
   }
-  const t25 = layoutMode === "horizontal" && <FeedColumn feeds={showOnboarding ? [createProjectOnboardingFeed(getSteps()), createRecentActivityFeed(activities)] : showGuestPassesUpsell ? [createRecentActivityFeed(activities), createGuestPassesFeed()] : showOverageCreditUpsell ? [createRecentActivityFeed(activities), createOverageCreditFeed()] : [createRecentActivityFeed(activities), createWhatsNewFeed(changelog)]} maxWidth={rightWidth} />;
+  const t25 = layoutMode === "horizontal" && <FeedColumn feeds={showOnboarding ? [createProjectOnboardingFeed(getSteps()), createRecentActivityFeed(activities)] : [createRecentActivityFeed(activities), createWhatsNewFeed(changelog)]} maxWidth={rightWidth} />;
   let t26;
   if ($[62] !== T2 || $[63] !== t15 || $[64] !== t23 || $[65] !== t24 || $[66] !== t25) {
-    t26 = <T2 flexDirection={t15} paddingX={t16} gap={t17}>{t23}{t24}{t25}</T2>;
+    t26 = <T2 flexDirection={t15} paddingX={2} gap={2}>{t23}{t24}{t25}</T2>;
     $[62] = T2;
     $[63] = t15;
     $[64] = t23;

@@ -113,24 +113,24 @@ export type ThemeSetting = (typeof THEME_SETTINGS)[number]
 const lightTheme: Theme = {
   autoAccept: 'rgb(135,0,255)', // Electric violet
   bashBorder: 'rgb(255,0,135)', // Vibrant pink
-  claude: 'rgb(215,119,87)', // Claude orange
-  claudeShimmer: 'rgb(245,149,117)', // Lighter claude orange for shimmer effect
+  claude: 'rgb(30,91,150)', // Starry blue
+  claudeShimmer: 'rgb(70,135,205)', // Lighter starry blue
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(87,105,247)', // Medium blue for system spinner
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'rgb(117,135,255)', // Lighter blue for system spinner shimmer
   permission: 'rgb(87,105,247)', // Medium blue
   permissionShimmer: 'rgb(137,155,255)', // Lighter blue for shimmer effect
   planMode: 'rgb(0,102,102)', // Muted teal
   ide: 'rgb(71,130,200)', // Muted blue
-  promptBorder: 'rgb(153,153,153)', // Medium gray
-  promptBorderShimmer: 'rgb(183,183,183)', // Lighter gray for shimmer effect
+  promptBorder: 'rgb(45,105,165)', // Starry blue border
+  promptBorderShimmer: 'rgb(90,155,220)', // Lighter starry blue border
   text: 'rgb(0,0,0)', // Black
   inverseText: 'rgb(255,255,255)', // White
   inactive: 'rgb(102,102,102)', // Dark gray
   inactiveShimmer: 'rgb(142,142,142)', // Lighter gray for shimmer effect
   subtle: 'rgb(175,175,175)', // Light gray
-  suggestion: 'rgb(87,105,247)', // Medium blue
+  suggestion: 'rgb(45,120,205)', // Starry blue suggestion
   remember: 'rgb(0,0,255)', // Blue
-  background: 'rgb(0,153,153)', // Cyan
+  background: 'rgb(8,22,48)', // Starry blue
   success: 'rgb(44,122,57)', // Green
   error: 'rgb(171,43,63)', // Red
   warning: 'rgb(150,108,30)', // Amber
@@ -156,8 +156,8 @@ const lightTheme: Theme = {
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
   // TUI V2 colors
-  mascot_body: 'rgb(240,120,100)', // shrimp pink
-  mascot_background: 'rgb(0,0,0)',
+  mascot_body: 'rgb(30,144,255)', // Azure orb
+  mascot_background: 'rgb(8,22,48)', // Starry blue
   userMessageBackground: 'rgb(240, 240, 240)', // Slightly darker grey for optimal contrast
   userMessageBackgroundHover: 'rgb(252, 252, 252)', // ≥250 to quantize distinct from base at 256-color level
   messageActionsBackground: 'rgb(232, 236, 244)', // cool gray — darker than userMsg 240 (visible on white), slight blue toward `suggestion`
@@ -193,16 +193,16 @@ const lightTheme: Theme = {
 const lightAnsiTheme: Theme = {
   autoAccept: 'ansi:magenta',
   bashBorder: 'ansi:magenta',
-  claude: 'ansi:redBright',
-  claudeShimmer: 'ansi:yellowBright',
+  claude: 'ansi:blueBright',
+  claudeShimmer: 'ansi:cyanBright',
   claudeBlue_FOR_SYSTEM_SPINNER: 'ansi:blue',
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'ansi:blueBright',
   permission: 'ansi:blue',
   permissionShimmer: 'ansi:blueBright',
   planMode: 'ansi:cyan',
   ide: 'ansi:blueBright',
-  promptBorder: 'ansi:white',
-  promptBorderShimmer: 'ansi:whiteBright',
+  promptBorder: 'ansi:blue',
+  promptBorderShimmer: 'ansi:blueBright',
   text: 'ansi:black',
   inverseText: 'ansi:white',
   inactive: 'ansi:blackBright',
@@ -210,7 +210,7 @@ const lightAnsiTheme: Theme = {
   subtle: 'ansi:blackBright',
   suggestion: 'ansi:blue',
   remember: 'ansi:blue',
-  background: 'ansi:cyan',
+  background: 'ansi:blue',
   success: 'ansi:green',
   error: 'ansi:red',
   warning: 'ansi:yellow',
@@ -236,7 +236,7 @@ const lightAnsiTheme: Theme = {
   // Chrome colors
   chromeYellow: 'ansi:yellow', // Chrome yellow
   // TUI V2 colors
-  mascot_body: 'ansi:redBright',
+  mascot_body: 'ansi:cyanBright',
   mascot_background: 'ansi:black',
   userMessageBackground: 'ansi:white',
   userMessageBackgroundHover: 'ansi:whiteBright',
@@ -272,16 +272,16 @@ const lightAnsiTheme: Theme = {
 const darkAnsiTheme: Theme = {
   autoAccept: 'ansi:magentaBright',
   bashBorder: 'ansi:magentaBright',
-  claude: 'ansi:redBright',
-  claudeShimmer: 'ansi:yellowBright',
+  claude: 'ansi:blueBright',
+  claudeShimmer: 'ansi:cyanBright',
   claudeBlue_FOR_SYSTEM_SPINNER: 'ansi:blueBright',
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'ansi:blueBright',
   permission: 'ansi:blueBright',
   permissionShimmer: 'ansi:blueBright',
   planMode: 'ansi:cyanBright',
   ide: 'ansi:blue',
-  promptBorder: 'ansi:white',
-  promptBorderShimmer: 'ansi:whiteBright',
+  promptBorder: 'ansi:blue',
+  promptBorderShimmer: 'ansi:blueBright',
   text: 'ansi:whiteBright',
   inverseText: 'ansi:black',
   inactive: 'ansi:white',
@@ -289,7 +289,7 @@ const darkAnsiTheme: Theme = {
   subtle: 'ansi:white',
   suggestion: 'ansi:blueBright',
   remember: 'ansi:blueBright',
-  background: 'ansi:cyanBright',
+  background: 'ansi:blueBright',
   success: 'ansi:greenBright',
   error: 'ansi:redBright',
   warning: 'ansi:yellowBright',
@@ -315,7 +315,7 @@ const darkAnsiTheme: Theme = {
   // Chrome colors
   chromeYellow: 'ansi:yellowBright', // Chrome yellow
   // TUI V2 colors
-  mascot_body: 'ansi:redBright',
+  mascot_body: 'ansi:cyanBright',
   mascot_background: 'ansi:black',
   userMessageBackground: 'ansi:blackBright',
   userMessageBackgroundHover: 'ansi:white',
@@ -351,7 +351,7 @@ const darkAnsiTheme: Theme = {
 const lightDaltonizedTheme: Theme = {
   autoAccept: 'rgb(135,0,255)', // Electric violet
   bashBorder: 'rgb(0,102,204)', // Blue instead of pink
-  claude: 'rgb(255,153,51)', // Orange adjusted for deuteranopia
+  claude: 'rgb(30,91,150)', // Starry blue
   claudeShimmer: 'rgb(255,183,101)', // Lighter orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(51,102,255)', // Bright blue for system spinner
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'rgb(101,152,255)', // Lighter bright blue for system spinner shimmer
@@ -359,7 +359,7 @@ const lightDaltonizedTheme: Theme = {
   permissionShimmer: 'rgb(101,152,255)', // Lighter bright blue for shimmer
   planMode: 'rgb(51,102,102)', // Muted blue-gray (works for color-blind)
   ide: 'rgb(71,130,200)', // Muted blue
-  promptBorder: 'rgb(153,153,153)', // Medium gray
+  promptBorder: 'rgb(45,105,165)', // Starry blue border
   promptBorderShimmer: 'rgb(183,183,183)', // Lighter gray for shimmer
   text: 'rgb(0,0,0)', // Black
   inverseText: 'rgb(255,255,255)', // White
@@ -368,7 +368,7 @@ const lightDaltonizedTheme: Theme = {
   subtle: 'rgb(175,175,175)', // Light gray
   suggestion: 'rgb(51,102,255)', // Bright blue
   remember: 'rgb(51,102,255)', // Bright blue
-  background: 'rgb(0,153,153)', // Cyan (color-blind friendly)
+  background: 'rgb(8,22,48)', // Starry blue
   success: 'rgb(0,102,153)', // Blue instead of green for deuteranopia
   error: 'rgb(204,0,0)', // Pure red for better distinction
   warning: 'rgb(255,153,0)', // Orange adjusted for deuteranopia
@@ -394,8 +394,8 @@ const lightDaltonizedTheme: Theme = {
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
   // TUI V2 colors
-  mascot_body: 'rgb(240,120,100)', // shrimp pink
-  mascot_background: 'rgb(0,0,0)',
+  mascot_body: 'rgb(30,144,255)', // Azure orb
+  mascot_background: 'rgb(8,22,48)', // Starry blue
   userMessageBackground: 'rgb(220, 220, 220)', // Slightly darker grey for optimal contrast
   userMessageBackgroundHover: 'rgb(232, 232, 232)', // ≥230 to quantize distinct from base at 256-color level
   messageActionsBackground: 'rgb(210, 216, 226)', // cool gray — darker than userMsg 220, slight blue
@@ -430,7 +430,7 @@ const lightDaltonizedTheme: Theme = {
 const darkTheme: Theme = {
   autoAccept: 'rgb(175,135,255)', // Electric violet
   bashBorder: 'rgb(253,93,177)', // Bright pink
-  claude: 'rgb(215,119,87)', // Claude orange
+  claude: 'rgb(30,91,150)', // Starry blue
   claudeShimmer: 'rgb(235,159,127)', // Lighter claude orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(147,165,255)', // Blue for system spinner
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'rgb(177,195,255)', // Lighter blue for system spinner shimmer
@@ -438,7 +438,7 @@ const darkTheme: Theme = {
   permissionShimmer: 'rgb(207,215,255)', // Lighter blue-purple for shimmer
   planMode: 'rgb(72,150,140)', // Muted sage green
   ide: 'rgb(71,130,200)', // Muted blue
-  promptBorder: 'rgb(136,136,136)', // Medium gray
+  promptBorder: 'rgb(45,105,165)', // Starry blue border
   promptBorderShimmer: 'rgb(166,166,166)', // Lighter gray for shimmer
   text: 'rgb(255,255,255)', // White
   inverseText: 'rgb(0,0,0)', // Black
@@ -447,7 +447,7 @@ const darkTheme: Theme = {
   subtle: 'rgb(80,80,80)', // Dark gray
   suggestion: 'rgb(177,185,249)', // Light blue-purple
   remember: 'rgb(177,185,249)', // Light blue-purple
-  background: 'rgb(0,204,204)', // Bright cyan
+  background: 'rgb(12,34,76)', // Deep starry blue
   success: 'rgb(78,186,101)', // Bright green
   error: 'rgb(255,107,128)', // Bright red
   warning: 'rgb(255,193,7)', // Bright amber
@@ -473,8 +473,8 @@ const darkTheme: Theme = {
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
   // TUI V2 colors
-  mascot_body: 'rgb(240,120,100)', // shrimp pink
-  mascot_background: 'rgb(0,0,0)',
+  mascot_body: 'rgb(30,144,255)', // Azure orb
+  mascot_background: 'rgb(8,22,48)', // Starry blue
   userMessageBackground: 'rgb(55, 55, 55)', // Lighter grey for better visual contrast
   userMessageBackgroundHover: 'rgb(70, 70, 70)',
   messageActionsBackground: 'rgb(44, 50, 62)', // cool gray, slight blue
@@ -509,7 +509,7 @@ const darkTheme: Theme = {
 const darkDaltonizedTheme: Theme = {
   autoAccept: 'rgb(175,135,255)', // Electric violet
   bashBorder: 'rgb(51,153,255)', // Bright blue
-  claude: 'rgb(255,153,51)', // Orange adjusted for deuteranopia
+  claude: 'rgb(30,91,150)', // Starry blue
   claudeShimmer: 'rgb(255,183,101)', // Lighter orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(153,204,255)', // Light blue for system spinner
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'rgb(183,224,255)', // Lighter blue for system spinner shimmer
@@ -517,7 +517,7 @@ const darkDaltonizedTheme: Theme = {
   permissionShimmer: 'rgb(183,224,255)', // Lighter blue for shimmer
   planMode: 'rgb(102,153,153)', // Muted gray-teal (works for color-blind)
   ide: 'rgb(71,130,200)', // Muted blue
-  promptBorder: 'rgb(136,136,136)', // Medium gray
+  promptBorder: 'rgb(45,105,165)', // Starry blue border
   promptBorderShimmer: 'rgb(166,166,166)', // Lighter gray for shimmer
   text: 'rgb(255,255,255)', // White
   inverseText: 'rgb(0,0,0)', // Black
@@ -526,7 +526,7 @@ const darkDaltonizedTheme: Theme = {
   subtle: 'rgb(80,80,80)', // Dark gray
   suggestion: 'rgb(153,204,255)', // Light blue
   remember: 'rgb(153,204,255)', // Light blue
-  background: 'rgb(0,204,204)', // Bright cyan (color-blind friendly)
+  background: 'rgb(12,34,76)', // Deep starry blue
   success: 'rgb(51,153,255)', // Blue instead of green
   error: 'rgb(255,102,102)', // Bright red
   warning: 'rgb(255,204,0)', // Yellow-orange for deuteranopia
@@ -552,8 +552,8 @@ const darkDaltonizedTheme: Theme = {
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
   // TUI V2 colors
-  mascot_body: 'rgb(240,120,100)', // shrimp pink
-  mascot_background: 'rgb(0,0,0)',
+  mascot_body: 'rgb(30,144,255)', // Azure orb
+  mascot_background: 'rgb(8,22,48)', // Starry blue
   userMessageBackground: 'rgb(55, 55, 55)', // Lighter grey for better visual contrast
   userMessageBackgroundHover: 'rgb(70, 70, 70)',
   messageActionsBackground: 'rgb(44, 50, 62)', // cool gray, slight blue
