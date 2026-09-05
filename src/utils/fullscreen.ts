@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process'
 import { getIsInteractive } from '../bootstrap/state.js'
 import { logForDebugging } from './debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js'
+import { getGlobalConfig } from './config.js'
 import { execFileNoThrow } from './execFileNoThrow.js'
 
 let loggedTmuxCcDisable = false
@@ -12,6 +13,17 @@ let checkedTmuxMouseHint = false
  * undefined = not yet queried (or probe failed) — env heuristic stays authoritative.
  */
 let tmuxControlModeProbed: boolean | undefined
+
+// /tui runtime override — beats the env heuristic so fullscreen/classic can
+// switch mid-session without a restart. Reset to undefined never happens by
+// design: the override IS the session's renderer choice from then on.
+let rendererModeOverride: 'fullscreen' | 'classic' | undefined
+
+export function setRendererModeOverride(
+  mode: 'fullscreen' | 'classic',
+): void {
+  rendererModeOverride = mode
+}
 
 /**
  * Env-var heuristic for iTerm2's tmux integration mode (`tmux -CC` / `tmux -2CC`).
@@ -114,6 +126,10 @@ export function isFullscreenEnvEnabled(): boolean {
   if (isEnvDefinedFalsy(process.env.OPENTHINK_NO_FLICKER)) return false
   // Explicit opt-in overrides auto-detection (escape hatch).
   if (isEnvTruthy(process.env.OPENTHINK_NO_FLICKER)) return true
+  // Upstream 2.1.132 CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN equivalent.
+  if (isEnvTruthy(process.env.OPENTHINK_DISABLE_ALTERNATE_SCREEN)) return false
+  // /tui in-session choice beats every auto-detection below.
+  if (rendererModeOverride) return rendererModeOverride === 'fullscreen'
   // Auto-disable under tmux -CC: alt-screen + mouse tracking corrupts
   // terminal state on double-click and mouse wheel is dead.
   if (isTmuxControlMode()) {
@@ -125,6 +141,10 @@ export function isFullscreenEnvEnabled(): boolean {
     }
     return false
   }
+  // Persisted /tui choice (upstream 2.1.110 `tui` setting).
+  const configured = getGlobalConfig().tui
+  if (configured === 'fullscreen') return true
+  if (configured === 'classic') return false
   return process.env.USER_TYPE === 'ant'
 }
 

@@ -420,10 +420,10 @@ export function FullscreenLayout(t0) {
     let t18;
     if ($[33] !== columns || $[34] !== modal || $[35] !== modalScrollRef || $[36] !== terminalRows) {
       t18 = modal != null && <ModalContext value={{
-        rows: terminalRows - MODAL_TRANSCRIPT_PEEK - 1,
-        columns: columns - 4,
+        rows: Math.max(1, terminalRows - MODAL_TRANSCRIPT_PEEK - 1),
+        columns: Math.max(1, columns - 4),
         scrollRef: modalScrollRef ?? null
-      }}><Box position="absolute" bottom={0} left={0} right={0} maxHeight={terminalRows - MODAL_TRANSCRIPT_PEEK} flexDirection="column" overflow="hidden" opaque={true}><Box flexShrink={0}><Text color="permission">{"\u2594".repeat(columns)}</Text></Box><Box flexDirection="column" paddingX={2} flexShrink={0} overflow="hidden">{modal}</Box></Box></ModalContext>;
+      }}><Box position="absolute" bottom={0} left={0} right={0} maxHeight={Math.max(1, terminalRows - MODAL_TRANSCRIPT_PEEK)} flexDirection="column" overflow="hidden" opaque={true}><Box flexShrink={0}><Text color="permission">{"\u2594".repeat(Math.max(1, columns))}</Text></Box><Box flexDirection="column" paddingX={2} flexGrow={1} minHeight={0} overflow="hidden">{modal}</Box></Box></ModalContext>;
       $[33] = columns;
       $[34] = modal;
       $[35] = modalScrollRef;
