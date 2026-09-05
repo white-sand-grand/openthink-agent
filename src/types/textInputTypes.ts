@@ -219,7 +219,7 @@ export type VimTextInputProps = BaseTextInputProps & {
 /**
  * Vim editor modes
  */
-export type VimMode = 'INSERT' | 'NORMAL'
+export type VimMode = 'INSERT' | 'NORMAL' | 'VISUAL' | 'VISUAL_LINE'
 
 /**
  * Common properties for input hook results
@@ -257,6 +257,8 @@ export type TextInputState = BaseInputState
 export type VimInputState = BaseInputState & {
   mode: VimMode
   setMode: (mode: VimMode) => void
+  /** Visual-mode selection highlight (present only while visual is active). */
+  highlights?: import('../utils/textHighlighting.js').TextHighlight[]
 }
 
 /**

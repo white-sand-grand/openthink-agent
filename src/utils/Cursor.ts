@@ -923,6 +923,96 @@ export class Cursor {
     return { cursor: prevWordCursor.modifyText(this), killed }
   }
 
+  // ---------------------------------------------------------------------------
+  // Readline-flavor word primitives (keybindingFlavor: "readline").
+  // A word is a maximal run of [A-Za-z0-9_]; a maximal run of punctuation is
+  // one unit; whitespace separates. Matches bash Alt+B/F/D semantics.
+  // ---------------------------------------------------------------------------
+
+  private readlineCharAt(pos: number): string {
+    return this.text[pos] ?? ''
+  }
+
+  private isReadlineWordChar(ch: string): boolean {
+    return /[A-Za-z0-9_]/.test(ch)
+  }
+
+  prevReadlineWord(): Cursor {
+    if (this.isAtStart()) return this
+    let pos = this.offset
+    // Skip whitespace backwards
+    while (pos > 0 && /\s/.test(this.readlineCharAt(this.measuredText.prevOffset(pos)))) {
+      pos = this.measuredText.prevOffset(pos)
+    }
+    if (pos === 0) return new Cursor(this.measuredText, 0)
+    // Step over one unit: a word-run or a punctuation-run
+    const cls = this.isReadlineWordChar(
+      this.readlineCharAt(this.measuredText.prevOffset(pos)),
+    )
+      ? 'word'
+      : 'punct'
+    while (pos > 0) {
+      const prevOffset = this.measuredText.prevOffset(pos)
+      const ch = this.readlineCharAt(prevOffset)
+      if (/\s/.test(ch) || this.isReadlineWordChar(ch) !== (cls === 'word')) {
+        break
+      }
+      pos = prevOffset
+    }
+    return new Cursor(this.measuredText, pos)
+  }
+
+  nextReadlineWord(): Cursor {
+    if (this.isAtEnd()) return this
+    let pos = this.offset
+    // Skip the current unit, then whitespace
+    const cls = this.isReadlineWordChar(this.readlineCharAt(pos))
+      ? 'word'
+      : this.isReadlineWordChar(this.readlineCharAt(pos)) === false &&
+          !/\s/.test(this.readlineCharAt(pos))
+        ? 'punct'
+        : 'space'
+    if (cls !== 'space') {
+      while (pos < this.text.length) {
+        const ch = this.readlineCharAt(pos)
+        if (/\s/.test(ch) || this.isReadlineWordChar(ch) !== (cls === 'word')) {
+          break
+        }
+        pos = this.measuredText.nextOffset(pos)
+      }
+    }
+    while (pos < this.text.length && /\s/.test(this.readlineCharAt(pos))) {
+      pos = this.measuredText.nextOffset(pos)
+    }
+    return new Cursor(this.measuredText, pos)
+  }
+
+  deleteReadlineWordBefore(): { cursor: Cursor; killed: string } {
+    if (this.isAtStart()) {
+      return { cursor: this, killed: '' }
+    }
+    const targetOffset = this.prevReadlineWord().offset
+    const killed = this.text.slice(targetOffset, this.offset)
+    return {
+      cursor: new Cursor(this.measuredText, targetOffset).modifyText(this),
+      killed,
+    }
+  }
+
+  deleteReadlineWordAfter(): { cursor: Cursor; killed: string } {
+    if (this.isAtEnd()) {
+      return { cursor: this, killed: '' }
+    }
+    const targetOffset = this.nextReadlineWord().offset
+    const killed = this.text.slice(this.offset, targetOffset)
+    return {
+      cursor: new Cursor(this.measuredText, this.offset).modifyText(
+        new Cursor(this.measuredText, targetOffset),
+      ),
+      killed,
+    }
+  }
+
   /**
    * Deletes a token before the cursor if one exists.
    * Supports pasted text refs: [Pasted text #1], [Pasted text #1 +10 lines],

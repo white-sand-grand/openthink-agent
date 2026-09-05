@@ -25,6 +25,7 @@ import initVerifiers from './commands/init-verifiers.js'
 import keybindings from './commands/keybindings/index.js'
 import breakCache from './commands/break-cache/index.js'
 import mcp from './commands/mcp/index.js'
+import model from './commands/model/index.js'
 import mobile from './commands/mobile/index.js'
 import pr_comments from './commands/pr_comments/index.js'
 import releaseNotes from './commands/release-notes/index.js'
@@ -153,6 +154,7 @@ import env from './commands/env/index.js'
 import exit from './commands/exit/index.js'
 import exportCommand from './commands/export/index.js'
 import tag from './commands/tag/index.js'
+import tui from './commands/tui/index.js'
 import outputStyle from './commands/output-style/index.js'
 import remoteEnv from './commands/remote-env/index.js'
 import statusline from './commands/statusline.js'
@@ -249,6 +251,7 @@ const COMMANDS = memoize((): Command[] => [
   init,
   keybindings,
   mcp,
+  model,
   mobile,
   outputStyle,
   remoteEnv,
@@ -265,6 +268,7 @@ const COMMANDS = memoize((): Command[] => [
   statusline,
   stickers,
   tag,
+  tui,
   theme,
   feedback,
   review,

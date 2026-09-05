@@ -124,7 +124,7 @@ export default function VimTextInput(props) {
   React.useEffect(t17, t18);
   let t19;
   if ($[34] !== isTerminalFocused || $[35] !== props || $[36] !== vimInputState) {
-    t19 = <Box flexDirection="column"><BaseTextInput inputState={vimInputState} terminalFocus={isTerminalFocused} highlights={props.highlights} {...props} /></Box>;
+    t19 = <Box flexDirection="column"><BaseTextInput inputState={vimInputState} terminalFocus={isTerminalFocused} {...props} highlights={vimInputState.highlights ?? props.highlights} /></Box>;
     $[34] = isTerminalFocused;
     $[35] = props;
     $[36] = vimInputState;

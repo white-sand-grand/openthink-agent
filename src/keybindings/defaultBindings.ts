@@ -304,6 +304,14 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       // Note: diff:back is handled by left arrow in detail mode
     },
   },
+  // Model picker effort cycling
+  {
+    context: 'ModelPicker',
+    bindings: {
+      left: 'modelPicker:decreaseEffort',
+      right: 'modelPicker:increaseEffort',
+    },
+  },
   // Select component navigation (used by /model, /resume, permission prompts, etc.)
   {
     context: 'Select',

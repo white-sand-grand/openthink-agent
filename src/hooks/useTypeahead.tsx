@@ -17,6 +17,7 @@ import { useAppState, useAppStateStore } from '../state/AppState.js';
 import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js';
 import type { InlineGhostText, PromptInputMode } from '../types/textInputTypes.js';
 import { isAgentSwarmsEnabled } from '../utils/agentSwarmsEnabled.js';
+import { applyEmojiCompletion, extractEmojiToken, getEmojiCompletions, isEmojiCompletionEnabled } from '../utils/emojiShortcodes.js';
 import { generateProgressiveArgumentHint, parseArguments } from '../utils/argumentSubstitution.js';
 import { getShellCompletions, type ShellCompletionType } from '../utils/bash/shellCompletion.js';
 import { formatLogMetadata } from '../utils/format.js';
@@ -812,6 +813,29 @@ export function useTypeahead({
       }
     }
 
+    // Emoji :shortcode: completion (upstream 2.1.217). Prompt mode only —
+    // bash input is literal shell text. The token regex requires start-of-line
+    // or whitespace before ':', so times (12:30) and URLs never trigger it.
+    if (mode !== 'bash' && isEmojiCompletionEnabled()) {
+      const emojiToken = extractEmojiToken(value, effectiveCursorOffset);
+      const emojiItems = emojiToken ? getEmojiCompletions(emojiToken.token) : [];
+      if (emojiItems.length > 0) {
+        setSuggestionsState(prev => ({
+          suggestions: emojiItems,
+          selectedSuggestion: getPreservedSelection(prev.suggestions, prev.selectedSuggestion, emojiItems),
+          commandArgumentHint: undefined
+        }));
+        setSuggestionType('emoji');
+        setMaxColumnWidth(undefined);
+        return;
+      }
+    }
+    if (suggestionType === 'emoji') {
+      // Token gone or no match — drop stale emoji suggestions
+      debouncedFetchFileSuggestions.cancel();
+      clearSuggestions();
+    }
+
     // Check for @ symbol to trigger file and MCP resource suggestions
     // Skip @ autocomplete in bash mode - @ has no special meaning in shell commands
     if (hasAtSymbol && mode !== 'bash') {
@@ -1014,6 +1038,14 @@ export function useTypeahead({
             completionType: ShellCompletionType;
           } | undefined;
           applyShellSuggestion(suggestion, input, cursorOffset, onInputChange, setCursorOffset, metadata?.completionType);
+          clearSuggestions();
+        }
+      } else if (suggestionType === 'emoji' && suggestions.length > 0) {
+        const suggestion = suggestions[index];
+        if (suggestion) {
+          const result = applyEmojiCompletion(input, cursorOffset, suggestion.displayText);
+          onInputChange(result.newInput);
+          setCursorOffset(result.cursorPos);
           clearSuggestions();
         }
       } else if (suggestionType === 'agent' && suggestions.length > 0 && suggestions[index]?.id?.startsWith('dm-')) {

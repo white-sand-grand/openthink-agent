@@ -11,6 +11,7 @@ import type {
 } from '../../types/command.js'
 import { getMessagesAfterCompactBoundary } from '../../utils/messages.js'
 import {
+  generateUniqueSessionTitle,
   getTranscriptPath,
   saveAgentName,
   saveCustomTitle,
@@ -45,7 +46,12 @@ export async function call(
       )
       return null
     }
-    newName = generated
+    // Auto-generated names dedupe against other sessions (2.1.236);
+    // explicit user renames keep their exact spelling.
+    newName = await generateUniqueSessionTitle(
+      getSessionId() as UUID,
+      generated,
+    )
   } else {
     newName = args.trim()
   }

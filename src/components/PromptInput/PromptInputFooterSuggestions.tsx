@@ -14,7 +14,7 @@ export type SuggestionItem = {
   metadata?: unknown;
   color?: keyof Theme;
 };
-export type SuggestionType = 'command' | 'file' | 'directory' | 'agent' | 'shell' | 'custom-title' | 'slack-channel' | 'none';
+export type SuggestionType = 'command' | 'file' | 'directory' | 'agent' | 'shell' | 'emoji' | 'custom-title' | 'slack-channel' | 'none';
 export const OVERLAY_MAX_ITEMS = 5;
 
 /**
@@ -25,6 +25,7 @@ function getIcon(itemId: string): string {
   if (itemId.startsWith('file-')) return '+';
   if (itemId.startsWith('mcp-resource-')) return '◇';
   if (itemId.startsWith('agent-')) return '*';
+  if (itemId.startsWith('emoji-')) return ':';
   return '+';
 }
 

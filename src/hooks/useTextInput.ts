@@ -19,6 +19,7 @@ import {
   yankPop,
 } from '../utils/Cursor.js'
 import { env } from '../utils/env.js'
+import { getGlobalConfig } from '../utils/config.js'
 import { isFullscreenEnvEnabled } from '../utils/fullscreen.js'
 import type { ImageDimensions } from '../utils/imageResizer.js'
 import { isModifierPressed, prewarmModifiers } from '../utils/modifiers.js'
@@ -221,6 +222,21 @@ export function useTextInput({
     return Cursor.fromText(newText, columns, newOffset)
   }
 
+  // Readline flavor (upstream 2.1.238/2.1.239): bash-style word semantics —
+  // Ctrl+W kills a whitespace-delimited word; Alt+B/F/D move/delete over
+  // alnum/underscore runs with punctuation as its own unit. The classic
+  // flavor keeps the pre-existing Intl-segmenter word behavior unchanged.
+  const readlineFlavor = getGlobalConfig().keybindingFlavor === 'readline'
+  const killReadlineWordBefore = (): Cursor => {
+    const { cursor: newCursor, killed } = cursor.deleteReadlineWordBefore()
+    pushToKillRing(killed, 'prepend')
+    return newCursor
+  }
+  const deleteReadlineWordAfter = (): Cursor => {
+    const { cursor: newCursor } = cursor.deleteReadlineWordAfter()
+    return newCursor
+  }
+
   const handleCtrl = mapInput([
     ['a', () => cursor.startOfLine()],
     ['b', () => cursor.left()],
@@ -233,14 +249,14 @@ export function useTextInput({
     ['n', () => downOrHistoryDown()],
     ['p', () => upOrHistoryUp()],
     ['u', killToLineStart],
-    ['w', killWordBefore],
+    ['w', readlineFlavor ? killReadlineWordBefore : killWordBefore],
     ['y', yank],
   ])
 
   const handleMeta = mapInput([
-    ['b', () => cursor.prevWord()],
-    ['f', () => cursor.nextWord()],
-    ['d', () => cursor.deleteWordAfter()],
+    ['b', () => (readlineFlavor ? cursor.prevReadlineWord() : cursor.prevWord())],
+    ['f', () => (readlineFlavor ? cursor.nextReadlineWord() : cursor.nextWord())],
+    ['d', () => (readlineFlavor ? deleteReadlineWordAfter() : cursor.deleteWordAfter())],
     ['y', handleYankPop],
   ])
 

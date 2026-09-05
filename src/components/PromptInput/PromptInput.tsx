@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import * as path from 'path';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useDebounceCallback } from 'usehooks-ts';
+import { findMisspelledRanges, isSpellcheckEnabled } from '../../utils/spellcheck.js';
 import { useNotifications } from 'src/context/notifications.js';
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
 import { type IDEAtMentioned, useIdeAtMentioned } from 'src/hooks/useIdeAtMentioned.js';
@@ -57,6 +59,7 @@ import { Cursor } from '../../utils/Cursor.js';
 import { getGlobalConfig, type PastedContent, saveGlobalConfig } from '../../utils/config.js';
 import { logForDebugging } from '../../utils/debug.js';
 import { parseDirectMemberMessage, sendDirectMemberMessage } from '../../utils/directMemberMessage.js';
+import type { EffortLevel } from '../../utils/effort.js';
 import { env } from '../../utils/env.js';
 import { errorMessage } from '../../utils/errors.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
@@ -587,6 +590,30 @@ function PromptInput({
       setCursorOffset(cursorOffset < mid ? inside.start : inside.end);
     }
   }, [cursorOffset, imageRefPositions, setCursorOffset]);
+  // Spellcheck (upstream 2.1.235): debounced pass through the local
+  // checker (aspell/hunspell/ispell). When no checker exists on PATH or the
+  // setting is off, findMisspelledRanges returns [] and this is inert.
+  const [misspelledHighlights, setMisspelledHighlights] = useState<TextHighlight[]>([]);
+  const spellcheckRequestIdRef = useRef(0);
+  const debouncedSpellcheck = useDebounceCallback(async (text: string) => {
+    const requestId = ++spellcheckRequestIdRef.current;
+    const ranges = await findMisspelledRanges(text);
+    if (spellcheckRequestIdRef.current !== requestId) return;
+    setMisspelledHighlights(ranges.map(range => ({
+      start: range.start,
+      end: range.end,
+      color: 'error' as const,
+      priority: 2
+    })));
+  }, 500);
+  useEffect(() => {
+    if (!isSpellcheckEnabled() || !input) {
+      debouncedSpellcheck.cancel();
+      setMisspelledHighlights([]);
+      return;
+    }
+    debouncedSpellcheck(input);
+  }, [input, debouncedSpellcheck]);
   const combinedHighlights = useMemo((): TextHighlight[] => {
     const highlights: TextHighlight[] = [];
 
@@ -726,8 +753,14 @@ function PromptInput({
         });
       }
     }
+
+    // Misspelled words from the local spellchecker — lowest priority so
+    // semantic highlights (commands, chips, mentions) win the overlap.
+    for (const highlight of misspelledHighlights) {
+      highlights.push(highlight);
+    }
     return highlights;
-  }, [isSearchingHistory, historyQuery, historyMatch, historyFailedMatch, cursorOffset, btwTriggers, imageRefPositions, memberMentionHighlights, slashCommandTriggers, tokenBudgetTriggers, slackChannelTriggers, displayedValue, voiceInterimRange, thinkTriggers, ultraplanTriggers, ultrareviewTriggers, buddyTriggers]);
+  }, [isSearchingHistory, historyQuery, historyMatch, historyFailedMatch, cursorOffset, btwTriggers, imageRefPositions, memberMentionHighlights, slashCommandTriggers, tokenBudgetTriggers, slackChannelTriggers, displayedValue, voiceInterimRange, thinkTriggers, ultraplanTriggers, ultrareviewTriggers, buddyTriggers, misspelledHighlights]);
   const {
     addNotification,
     removeNotification
@@ -1940,8 +1973,14 @@ function PromptInput({
     addNotification({
       key: 'effort-level',
       text: effortNotificationText,
+      // Theme-keyed so customThemeOverrides can recolor the badge (2.1.239).
+      color: 'effortBadge',
       priority: 'high',
-      timeoutMs: 12_000
+      timeoutMs: 12_000,
+      // addNotification drops same-key duplicates without a fold, which would
+      // freeze the badge at whatever level showed first (and resurrect it when
+      // an immediate notification re-queues it) — incoming always wins.
+      fold: (_accumulator, incoming) => incoming
     });
   }, [effortNotificationText, addNotification, removeNotification]);
   useBuddyNotification();
@@ -1986,7 +2025,7 @@ function PromptInput({
   // Memoized callbacks for model picker to prevent re-renders when unrelated
   // state (like notifications) changes. This prevents the inline model picker
   // from visually "jumping" when notifications arrive.
-  const handleModelSelect = useCallback((model: string | null) => {
+  const handleModelSelect = useCallback((model: string | null, _effort: EffortLevel | undefined) => {
     setAppState(prev => ({
       ...prev,
       mainLoopModel: model,

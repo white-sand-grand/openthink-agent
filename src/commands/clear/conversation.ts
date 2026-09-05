@@ -35,6 +35,9 @@ import { setCwd } from '../../utils/Shell.js'
 import { processSessionStartHooks } from '../../utils/sessionStart.js'
 import {
   clearSessionMetadata,
+  getCurrentSessionTitle,
+  markSessionCleared,
+  saveCustomTitle,
   getAgentTranscriptPath,
   resetSessionFilePointer,
   saveWorktreeState,
@@ -194,6 +197,16 @@ export async function clearConversation({
   // Clear plan slug cache so a new plan file is used after /clear
   clearAllPlanSlugs()
 
+  // Capture a user-set name (/rename) BEFORE the metadata cache is wiped —
+  // upstream 2.1.246 keeps it across /clear so the continued lineage stays
+  // addressable in /resume. AI titles are deliberately not carried over:
+  // the fresh session gets its own from its first message.
+  const carriedCustomTitle = getCurrentSessionTitle(getSessionId())
+
+  // Mark the old transcript as cleared BEFORE the session ID regenerates —
+  // /rewind offers it back (upstream 2.1.191).
+  markSessionCleared()
+
   // Clear cached session metadata (title, tag, agent name/color)
   // so the new session doesn't inherit the previous session's identity
   clearSessionMetadata()
@@ -206,6 +219,11 @@ export async function clearConversation({
     process.env.OPENTHINK_SESSION_ID = getSessionId()
   }
   await resetSessionFilePointer()
+
+  // Re-apply the carried user name to the fresh session (see above).
+  if (carriedCustomTitle) {
+    await saveCustomTitle(getSessionId(), carriedCustomTitle, undefined, 'auto')
+  }
 
   // Preserved local_agent tasks had their TaskOutput symlink baked against the
   // old session ID at spawn time, but post-clear transcript writes land under

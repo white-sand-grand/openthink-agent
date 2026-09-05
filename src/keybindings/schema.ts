@@ -89,6 +89,9 @@ export const KEYBINDING_ACTIONS = [
   'chat:stash',
   'chat:imagePaste',
   'chat:messageActions',
+  // Model picker actions
+  'modelPicker:decreaseEffort',
+  'modelPicker:increaseEffort',
   // Autocomplete menu actions
   'autocomplete:accept',
   'autocomplete:dismiss',
