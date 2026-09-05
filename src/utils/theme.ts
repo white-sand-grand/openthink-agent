@@ -1,5 +1,6 @@
 import chalk, { Chalk } from 'chalk'
 import { env } from './env.js'
+import { getGlobalConfig } from './config.js'
 
 export type Theme = {
   autoAccept: string
@@ -20,6 +21,7 @@ export type Theme = {
   inactiveShimmer: string // Lighter version of inactive color for shimmer effect
   subtle: string
   suggestion: string
+  effortBadge: string
   remember: string
   background: string
   // Semantic colors
@@ -128,7 +130,8 @@ const lightTheme: Theme = {
   inactive: 'rgb(102,102,102)', // Dark gray
   inactiveShimmer: 'rgb(142,142,142)', // Lighter gray for shimmer effect
   subtle: 'rgb(175,175,175)', // Light gray
-  suggestion: 'rgb(45,120,205)', // Starry blue suggestion
+  suggestion: 'rgb(45,120,205)',
+  effortBadge: 'rgb(45,120,205)', // Starry blue suggestion
   remember: 'rgb(0,0,255)', // Blue
   background: 'rgb(8,22,48)', // Starry blue
   success: 'rgb(44,122,57)', // Green
@@ -209,6 +212,7 @@ const lightAnsiTheme: Theme = {
   inactiveShimmer: 'ansi:white',
   subtle: 'ansi:blackBright',
   suggestion: 'ansi:blue',
+  effortBadge: 'ansi:blue',
   remember: 'ansi:blue',
   background: 'ansi:blue',
   success: 'ansi:green',
@@ -288,6 +292,7 @@ const darkAnsiTheme: Theme = {
   inactiveShimmer: 'ansi:whiteBright',
   subtle: 'ansi:white',
   suggestion: 'ansi:blueBright',
+  effortBadge: 'ansi:blueBright',
   remember: 'ansi:blueBright',
   background: 'ansi:blueBright',
   success: 'ansi:greenBright',
@@ -366,7 +371,8 @@ const lightDaltonizedTheme: Theme = {
   inactive: 'rgb(102,102,102)', // Dark gray
   inactiveShimmer: 'rgb(142,142,142)', // Lighter gray for shimmer effect
   subtle: 'rgb(175,175,175)', // Light gray
-  suggestion: 'rgb(51,102,255)', // Bright blue
+  suggestion: 'rgb(51,102,255)',
+  effortBadge: 'rgb(51,102,255)', // Bright blue
   remember: 'rgb(51,102,255)', // Bright blue
   background: 'rgb(8,22,48)', // Starry blue
   success: 'rgb(0,102,153)', // Blue instead of green for deuteranopia
@@ -445,7 +451,8 @@ const darkTheme: Theme = {
   inactive: 'rgb(153,153,153)', // Light gray
   inactiveShimmer: 'rgb(193,193,193)', // Lighter gray for shimmer effect
   subtle: 'rgb(80,80,80)', // Dark gray
-  suggestion: 'rgb(177,185,249)', // Light blue-purple
+  suggestion: 'rgb(177,185,249)',
+  effortBadge: 'rgb(177,185,249)', // Light blue-purple
   remember: 'rgb(177,185,249)', // Light blue-purple
   background: 'rgb(12,34,76)', // Deep starry blue
   success: 'rgb(78,186,101)', // Bright green
@@ -524,7 +531,8 @@ const darkDaltonizedTheme: Theme = {
   inactive: 'rgb(153,153,153)', // Light gray
   inactiveShimmer: 'rgb(193,193,193)', // Lighter gray for shimmer effect
   subtle: 'rgb(80,80,80)', // Dark gray
-  suggestion: 'rgb(153,204,255)', // Light blue
+  suggestion: 'rgb(153,204,255)',
+  effortBadge: 'rgb(153,204,255)', // Light blue
   remember: 'rgb(153,204,255)', // Light blue
   background: 'rgb(12,34,76)', // Deep starry blue
   success: 'rgb(51,153,255)', // Blue instead of green
@@ -581,7 +589,32 @@ const darkDaltonizedTheme: Theme = {
   rainbow_violet_shimmer: 'rgb(230,180,210)',
 }
 
-export function getTheme(themeName: ThemeName): Theme {
+/**
+ * User-customizable theme keys (upstream 2.1.239: custom diffAdded/
+ * diffRemoved and dark variants taking effect, effort badge color). Grouped
+ * by light/dark so one override set covers a theme and its variants.
+ * Stored in globalConfig, not settings.json — the theme preference itself
+ * lives there (ThemeProvider).
+ */
+export type CustomThemeOverrides = {
+  light?: Partial<Record<keyof Theme, string>>
+  dark?: Partial<Record<keyof Theme, string>>
+}
+
+const THEME_GROUP_FOR_NAME: Record<ThemeName, 'light' | 'dark'> = {
+  light: 'light',
+  'light-ansi': 'light',
+  'light-daltonized': 'light',
+  dark: 'dark',
+  'dark-ansi': 'dark',
+  'dark-daltonized': 'dark',
+}
+
+// Memoized per (overrides signature, themeName) so render-path consumers that
+// compare by object identity (react-compiler memo slots) stay stable.
+let overridesCache: { sig: string; themes: Map<ThemeName, Theme> } | null = null
+
+function getBaseTheme(themeName: ThemeName): Theme {
   switch (themeName) {
     case 'light':
       return lightTheme
@@ -596,6 +629,27 @@ export function getTheme(themeName: ThemeName): Theme {
     default:
       return darkTheme
   }
+}
+
+export function getTheme(themeName: ThemeName): Theme {
+  const overrides = getGlobalConfig().customThemeOverrides
+  const sig = JSON.stringify(overrides ?? {})
+  if (sig === '{}') return getBaseTheme(themeName)
+  if (overridesCache?.sig !== sig) {
+    overridesCache = { sig, themes: new Map() }
+  }
+  const cached = overridesCache.themes.get(themeName)
+  if (cached) return cached
+  const base = getBaseTheme(themeName)
+  const group = overrides?.[THEME_GROUP_FOR_NAME[themeName]] ?? {}
+  const merged = { ...base }
+  for (const [key, value] of Object.entries(group)) {
+    if (typeof value === 'string' && key in base) {
+      merged[key as keyof Theme] = value
+    }
+  }
+  overridesCache.themes.set(themeName, merged)
+  return merged
 }
 
 // Create a chalk instance with 256-color level for Apple Terminal

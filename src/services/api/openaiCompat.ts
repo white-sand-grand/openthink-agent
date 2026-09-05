@@ -15,7 +15,10 @@ import { logForDebugging } from '../../utils/debug.js'
  * — translating requests to /chat/completions and translating OpenAI SSE
  * chunks back into BetaRawMessageStreamEvent sequences. Scope: text,
  * images (base64/URL), tool declarations + tool_use/tool_result round-trip,
- * reasoning_content → thinking deltas. Prompt caching / betas / server tools
+ * reasoning_content → thinking deltas. Prompt caching: Anthropic
+ * cache_control has no OpenAI equivalent and is dropped — caching over this
+ * adapter relies on the gateway/provider's own prefix caching, and usage
+ * reports zero cache tokens rather than fabricating them. Betas / server tools
  * have no OpenAI equivalent and are dropped.
  */
 

@@ -30,7 +30,7 @@ import type { MemoryType } from './memory/types.js'
 import { normalizePathForConfigKey } from './path.js'
 import { getEssentialTrafficOnlyReason } from './privacyLevel.js'
 import { getManagedFilePath } from './settings/managedPath.js'
-import type { ThemeSetting } from './theme.js'
+import type { CustomThemeOverrides, ThemeSetting } from './theme.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
@@ -195,6 +195,9 @@ export type GlobalConfig = {
   doctorShownAtSession?: number
   userID?: string
   theme: ThemeSetting
+  // Per-light/dark theme key overrides (diff colors, effort badge, ...).
+  // Applied inside getTheme(); see theme.ts CustomThemeOverrides.
+  customThemeOverrides?: CustomThemeOverrides
   hasCompletedOnboarding?: boolean
   // Tracks the last version that reset onboarding, used with MIN_VERSION_REQUIRING_ONBOARDING_RESET
   lastOnboardingVersion?: string
@@ -229,6 +232,23 @@ export type GlobalConfig = {
   oauthAccount?: AccountInfo
   iterm2KeyBindingInstalled?: boolean // Legacy - keeping for backward compatibility
   editorMode?: EditorMode
+  /**
+   * Insert-mode key sequences that act as Esc in vim mode, e.g.
+   * {"jj": "esc"}. Only the target "esc" is honored. Applied by
+   * useVimInput with a typing-pause flush so lone prefixes still insert.
+   */
+  vimInsertModeRemaps?: Record<string, string>
+  /**
+   * Word-operation semantics for editing keys: "classic" (default) keeps
+   * the Intl-segmenter word behavior; "readline" matches bash — Ctrl+W
+   * kills a whitespace-delimited word, Alt+B/F/D use shell word units.
+   */
+  keybindingFlavor?: 'classic' | 'readline'
+  /**
+   * Renderer preference persisted by /tui (upstream 2.1.110): fullscreen
+   * alternate-screen renderer or the classic main-screen one.
+   */
+  tui?: 'fullscreen' | 'classic'
   bypassPermissionsModeAccepted?: boolean
   hasUsedBackslashReturn?: boolean
   autoCompactEnabled: boolean // Controls whether auto-compact is enabled
@@ -629,10 +649,14 @@ export const GLOBAL_CONFIG_KEYS = [
   'autoUpdates',
   'autoUpdatesProtectedForNative',
   'theme',
+  'customThemeOverrides',
   'verbose',
   'preferredNotifChannel',
   'shiftEnterKeyBindingInstalled',
   'editorMode',
+  'vimInsertModeRemaps',
+  'keybindingFlavor',
+  'tui',
   'hasUsedBackslashReturn',
   'autoCompactEnabled',
   'showTurnDuration',

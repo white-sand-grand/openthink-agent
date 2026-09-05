@@ -2673,6 +2673,141 @@ export function saveAiGeneratedTitle(sessionId: UUID, aiTitle: string): void {
 }
 
 /**
+ * Deduplicate an auto-generated session title against other sessions in the
+ * current project (upstream 2.1.236: duplicate names get an automatic
+ * suffix). Appends a numeric `-2`/`-3` suffix — deviation from upstream's
+ * word-append: deterministic, stable across /resume re-sorts, and the AI
+ * prompt already constrains titles to 2-4 words. Only auto names go through
+ * this; an explicit /rename keeps the user's exact spelling.
+ */
+export async function generateUniqueSessionTitle(
+  sessionId: UUID,
+  baseTitle: string,
+): Promise<string> {
+  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
+  let files: string[]
+  try {
+    files = (await readdir(projectDir))
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => join(projectDir, f))
+  } catch {
+    return baseTitle
+  }
+  const selfPath = getTranscriptPathForSession(sessionId)
+  const taken = new Set<string>()
+  const buf = Buffer.alloc(LITE_READ_BUF_SIZE)
+  await Promise.all(
+    files.map(async f => {
+      if (f === selfPath) return
+      try {
+        const size = (await stat(f)).size
+        const { head, tail } = await readHeadAndTail(f, size, buf)
+        const title =
+          extractLastJsonStringField(tail, 'customTitle') ??
+          extractLastJsonStringField(head, 'customTitle') ??
+          extractLastJsonStringField(tail, 'aiTitle') ??
+          extractLastJsonStringField(head, 'aiTitle')
+        if (title) taken.add(title.toLowerCase())
+      } catch {
+        // Unreadable session file — skip it, never block naming
+      }
+    }),
+  )
+  if (!taken.has(baseTitle.toLowerCase())) return baseTitle
+  for (let i = 2; i < 100; i++) {
+    if (!taken.has(`${baseTitle.toLowerCase()}-${i}`)) return `${baseTitle}-${i}`
+  }
+  return `${baseTitle}-${Date.now().toString(36)}`
+}
+
+// ---------------------------------------------------------------------------
+// Cleared-session snapshots (/rewind, upstream 2.1.191)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mark the CURRENT transcript as cleared. Called by /clear right before the
+ * session ID regenerates, so the marker lands in the (now-orphaned) old
+ * transcript and /rewind can offer it back.
+ */
+export function markSessionCleared(): void {
+  appendEntryToFile(getTranscriptPath(), {
+    type: 'clearedAt',
+    sessionId: getSessionId(),
+  })
+}
+
+export type ClearedSessionInfo = {
+  sessionId: string
+  fullPath: string
+  mtime: number
+  title: string
+  liteLog: LogOption
+}
+
+/**
+ * Sessions in the current project whose transcript contains a `clearedAt`
+ * marker — conversations discarded by /clear that /rewind can restore.
+ * Detection is a bounded head/tail read; a restored session that grows past
+ * the tail window naturally leaves the list. Excludes the live session.
+ */
+export async function getClearedSessions(): Promise<ClearedSessionInfo[]> {
+  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
+  let names: string[]
+  try {
+    names = (await readdir(projectDir))
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => join(projectDir, f))
+  } catch {
+    return []
+  }
+  const currentId = getSessionId()
+  const results: ClearedSessionInfo[] = []
+  const buf = Buffer.alloc(LITE_READ_BUF_SIZE)
+  await Promise.all(
+    names.map(async fullPath => {
+      const sessionId = basename(fullPath).replace(/\.jsonl$/, '')
+      if (sessionId === currentId) return
+      try {
+        const size = (await stat(fullPath)).size
+        const { head, tail } = await readHeadAndTail(fullPath, size, buf)
+        if (!tail.includes('"clearedAt"')) return
+        const title =
+          extractLastJsonStringField(tail, 'customTitle') ??
+          extractLastJsonStringField(head, 'customTitle') ??
+          extractLastJsonStringField(tail, 'aiTitle') ??
+          extractLastJsonStringField(head, 'aiTitle') ??
+          extractLastJsonStringField(tail, 'lastPrompt') ??
+          sessionId.slice(0, 8)
+        const mtimeMs = (await stat(fullPath)).mtimeMs
+        results.push({
+          sessionId,
+          fullPath,
+          mtime: mtimeMs,
+          title,
+          liteLog: {
+            date: new Date(mtimeMs).toISOString(),
+            messages: [],
+            fullPath,
+            value: 0,
+            created: new Date(mtimeMs),
+            modified: new Date(mtimeMs),
+            firstPrompt: title,
+            messageCount: 0,
+            isSidechain: false,
+            isLite: true,
+            sessionId,
+            customTitle: title,
+          },
+        })
+      } catch {
+        // Unreadable file — skip
+      }
+    }),
+  )
+  return results.sort((a, b) => b.mtime - a.mtime).slice(0, 10)
+}
+
+/**
  * Append a periodic task summary for `claude ps`. Unlike ai-title this is
  * not re-appended by reAppendSessionMetadata — it's a rolling snapshot of
  * what the agent is doing *now*, so staleness is fine; ps reads the most

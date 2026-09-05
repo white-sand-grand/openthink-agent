@@ -219,6 +219,9 @@ export type AppState = DeepImmutable<{
   attribution: AttributionState
   todos: { [agentId: string]: TodoList }
   remoteAgentTaskSuggestions: { summary: string; task: string }[]
+  // Bumped by /tui on renderer mode change — keyed layouts remount below
+  // FullscreenLayout while conversation state (held in REPL) survives.
+  rendererNonce?: number
   notifications: {
     current: Notification | null
     queue: Notification[]

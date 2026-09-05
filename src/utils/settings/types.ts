@@ -778,6 +778,30 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe('Advisor model for the server-side advisor tool.'),
+      spellcheck: z
+        .boolean()
+        .optional()
+        .describe(
+          'Highlight misspelled words in the prompt input. Requires aspell, hunspell, or ispell on PATH; silently off otherwise (default off).',
+        ),
+      promptCacheTtl: z
+        .enum(['5m', '1h'])
+        .optional()
+        .describe(
+          'Prompt cache TTL for requests. Overrides subscription-based 1h eligibility; the OPENTHINK_FORCE_PROMPT_CACHING_5M env var still wins.',
+        ),
+      subagentPromptCacheTtl: z
+        .enum(['5m', '1h'])
+        .optional()
+        .describe(
+          'Prompt cache TTL for subagent requests; falls back to promptCacheTtl when unset.',
+        ),
+      emojiCompletionEnabled: z
+        .boolean()
+        .optional()
+        .describe(
+          'Enable :shortcode: emoji completion in the prompt input (default on).',
+        ),
       promptSuggestionEnabled: z
         .boolean()
         .optional()

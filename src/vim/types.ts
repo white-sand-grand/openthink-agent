@@ -49,6 +49,12 @@ export type TextObjScope = 'inner' | 'around'
 export type VimState =
   | { mode: 'INSERT'; insertedText: string }
   | { mode: 'NORMAL'; command: CommandState }
+  | {
+      mode: 'VISUAL' | 'VISUAL_LINE'
+      /** Where the selection started (the fixed end). */
+      anchor: number
+      linewise: boolean
+    }
 
 /**
  * Command state machine for NORMAL mode.

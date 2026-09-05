@@ -365,6 +365,34 @@ export function getCacheControl({
   ttl?: '1h'
   scope?: CacheScope
 } {
+  // Explicit overrides, in order: force-5m env (upstream 2.1.108
+  // FORCE_PROMPT_CACHING_5M equivalent) > user TTL settings (2.1.243
+  // promptCacheTtl / subagentPromptCacheTtl) > enable-1h env > the
+  // subscription/GrowthBook latch below.
+  if (isEnvTruthy(process.env.OPENTHINK_FORCE_PROMPT_CACHING_5M)) {
+    return {
+      type: 'ephemeral',
+      ...(scope === 'global' && { scope }),
+    }
+  }
+  const settings = getSettings_DEPRECATED()
+  const ttlSetting =
+    querySource?.startsWith('agent') === true
+      ? (settings?.subagentPromptCacheTtl ?? settings?.promptCacheTtl)
+      : settings?.promptCacheTtl
+  if (ttlSetting === '1h' || isEnvTruthy(process.env.OPENTHINK_ENABLE_PROMPT_CACHING_1H)) {
+    return {
+      type: 'ephemeral',
+      ttl: '1h',
+      ...(scope === 'global' && { scope }),
+    }
+  }
+  if (ttlSetting === '5m') {
+    return {
+      type: 'ephemeral',
+      ...(scope === 'global' && { scope }),
+    }
+  }
   return {
     type: 'ephemeral',
     ...(should1hCacheTTL(querySource) && { ttl: '1h' }),
