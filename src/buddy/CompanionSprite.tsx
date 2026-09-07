@@ -11,7 +11,9 @@ import { getGlobalConfig } from '../utils/config.js';
 import { isFullscreenActive } from '../utils/fullscreen.js';
 import type { Theme } from '../utils/theme.js';
 import { getCompanion } from './companion.js';
-import { Orb } from '../components/LogoV2/Orb.js';
+import { Orb, ORB_WIDTH } from '../components/LogoV2/Orb.js';
+import { truncateToWidth } from '../utils/format.js';
+import { getInitialSettings } from '../utils/settings/settings.js';
 import { RARITY_COLORS } from './types.js';
 const TICK_MS = 500;
 const BUBBLE_SHOW = 20; // ticks → ~10s at 500ms
@@ -58,14 +60,14 @@ function SpeechBubble(t0) {
   let t5;
   let t6;
   if ($[0] !== color || $[1] !== fading || $[2] !== text) {
-    const lines = wrap(text, 30);
+    const lines = wrap(text, 20);
     borderColor = fading ? "inactive" : color;
     T0 = Box;
     t1 = "column";
     t2 = "round";
     t3 = borderColor;
     t4 = 1;
-    t5 = 34;
+    t5 = 24;
     let t7;
     if ($[11] !== fading) {
       t7 = (l, i) => <Text key={i} italic={true} dimColor={!fading} color={fading ? "inactive" : undefined}>{l}</Text>;
@@ -151,13 +153,14 @@ function SpeechBubble(t0) {
   return t9;
 }
 export const MIN_COLS_FOR_FULL_SPRITE = 100;
-const SPRITE_BODY_WIDTH = 12;
+const SPRITE_BODY_WIDTH = ORB_WIDTH;
+const MAX_NAME_WIDTH = 10;
 const NAME_ROW_PAD = 2; // focused state wraps name in spaces: ` name `
 const SPRITE_PADDING_X = 2;
-const BUBBLE_WIDTH = 36; // SpeechBubble box (34) + tail column
+const BUBBLE_WIDTH = 26; // SpeechBubble box (24) + tail column
 const NARROW_QUIP_CAP = 24;
 function spriteColWidth(nameWidth: number): number {
-  return Math.max(SPRITE_BODY_WIDTH, nameWidth + NAME_ROW_PAD);
+  return Math.max(SPRITE_BODY_WIDTH, Math.min(nameWidth, MAX_NAME_WIDTH) + NAME_ROW_PAD);
 }
 
 // Width the sprite area consumes. PromptInput subtracts this so text wraps
@@ -183,6 +186,7 @@ export function CompanionSprite(): React.ReactNode {
     columns
   } = useTerminalSize();
   const [tick, setTick] = useState(0);
+  const [reducedMotion] = useState(() => getInitialSettings().prefersReducedMotion ?? false);
   const lastSpokeTick = useRef(0);
   // Sync-during-render (not useEffect) so the first post-pet render already
   // has petStartTick=tick and petAge=0 — otherwise frame 0 is skipped.
@@ -227,7 +231,8 @@ export function CompanionSprite(): React.ReactNode {
   // replaces the name beside the face (no room for a bubble).
   if (columns < MIN_COLS_FOR_FULL_SPRITE) {
     const quip = reaction && reaction.length > NARROW_QUIP_CAP ? reaction.slice(0, NARROW_QUIP_CAP - 1) + '…' : reaction;
-    const label = quip ? `"${quip}"` : focused ? ` ${companion.name} ` : companion.name;
+    const name = truncateToWidth(companion.name, MAX_NAME_WIDTH);
+    const label = quip ? `"${quip}"` : focused ? ` ${name} ` : name;
     return <Box paddingX={1} alignSelf="flex-end">
         <Text>
           {petting && <Text color="autoAccept">{figures.heart} </Text>}
@@ -239,7 +244,8 @@ export function CompanionSprite(): React.ReactNode {
       </Box>;
   }
   const heartFrame = petting ? PET_HEARTS[petAge % PET_HEARTS.length] : null;
-  const blink = !reaction && !petting && IDLE_SEQUENCE[tick % IDLE_SEQUENCE.length] === -1;
+  const idleFrame = IDLE_SEQUENCE[tick % IDLE_SEQUENCE.length];
+  const blink = !reaction && !petting && idleFrame === -1;
 
   // Name row doubles as hint row — unfocused shows dim name + ↓ discovery,
   // focused shows inverse name. The enter-to-open hint lives in
@@ -248,9 +254,9 @@ export function CompanionSprite(): React.ReactNode {
   // inline-bubble row wrapper from squeezing the sprite to fit.
   const spriteColumn = <Box flexDirection="column" flexShrink={0} alignItems="center" width={colWidth}>
       {heartFrame && <Text color="autoAccept">{heartFrame}</Text>}
-      <Orb pose={blink ? 'blink' : reaction || petting ? 'look-right' : 'default'} />
+      <Orb pose={reducedMotion ? 'default' : blink ? 'blink' : reaction || petting || idleFrame === 2 ? 'look-right' : idleFrame === 1 ? 'look-left' : 'default'} />
       <Text italic bold={focused} dimColor={!focused} color={focused ? color : undefined} inverse={focused}>
-        {focused ? ` ${companion.name} ` : companion.name}
+        {focused ? ` ${truncateToWidth(companion.name, MAX_NAME_WIDTH)} ` : truncateToWidth(companion.name, MAX_NAME_WIDTH)}
       </Text>
     </Box>;
   if (!reaction) {

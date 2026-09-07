@@ -39,7 +39,7 @@ import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
 import { plural } from '../../utils/stringUtils.js';
 import { useAppState } from '../../state/AppState.js';
 import { getEffortSuffix } from '../../utils/effort.js';
-import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
+import { useConfiguredMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { renderModelSetting } from '../../utils/model/model.js';
 const LEFT_PANEL_MAX_WIDTH = 50;
 export function LogoV2() {
@@ -117,8 +117,8 @@ export function LogoV2() {
     t4 = $[5];
   }
   const isCondensedMode = t4;
-  const model = useMainLoopModel();
-  const fullModelDisplayName = renderModelSetting(model);
+  const model = useConfiguredMainLoopModel();
+  const fullModelDisplayName = model ? renderModelSetting(model) : 'no model';
   const {
     version,
     cwd,
@@ -126,7 +126,7 @@ export function LogoV2() {
     agentName: agentNameFromSettings
   } = getLogoDisplayData();
   const agentName = agent ?? agentNameFromSettings;
-  const effortSuffix = getEffortSuffix(model, effortValue);
+  const effortSuffix = model ? getEffortSuffix(model, effortValue) : '';
   const t9 = fullModelDisplayName + effortSuffix;
   let t10;
   if ($[13] !== t9) {

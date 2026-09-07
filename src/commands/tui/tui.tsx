@@ -1,5 +1,6 @@
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
-import { isTmuxControlMode, setRendererModeOverride } from '../../utils/fullscreen.js'
+import { saveGlobalConfig } from '../../utils/config.js'
+import { isFullscreenEnvEnabled, isTmuxControlMode, setRendererModeOverride } from '../../utils/fullscreen.js'
+import { isEnvTruthy } from '../../utils/envUtils.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
@@ -19,13 +20,17 @@ export async function call(
     mode = requested
   } else if (!requested) {
     // No argument: toggle to the opposite of the current mode
-    const current = getGlobalConfig().tui
-    mode = current === 'fullscreen' ? 'classic' : 'fullscreen'
+    mode = isFullscreenEnvEnabled() ? 'classic' : 'fullscreen'
   } else {
     onDone(
       `Unknown renderer: ${args}. Usage: /tui [fullscreen|classic]`,
       { display: 'system' },
     )
+    return null
+  }
+
+  if (mode === 'fullscreen' && isEnvTruthy(process.env.OPENTHINK_DISABLE_ALTERNATE_SCREEN)) {
+    onDone('Cannot enable fullscreen while OPENTHINK_DISABLE_ALTERNATE_SCREEN is set. Unset it and restart to enable the alternate screen.', { display: 'system' })
     return null
   }
 

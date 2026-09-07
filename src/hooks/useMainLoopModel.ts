@@ -1,6 +1,8 @@
 import { useEffect, useReducer } from 'react'
 import { onGrowthBookRefresh } from '../services/analytics/growthbook.js'
 import { useAppState } from '../state/AppState.js'
+import { getSlotUserModel } from '../utils/model/slots.js'
+import { hasConfiguredDisplayModel } from '../utils/model/configuredModelDisplay.js'
 import {
   getDefaultMainLoopModelSetting,
   type ModelName,
@@ -31,4 +33,19 @@ export function useMainLoopModel(): ModelName {
       getDefaultMainLoopModelSetting(),
   )
   return model
+}
+
+/** UI-only nullable model; never send the empty-state label to the API. */
+export function useConfiguredMainLoopModel(): ModelName | null {
+  const model = useMainLoopModel()
+  const selection = useAppState(s => s.mainLoopModelForSession ?? s.mainLoopModel)
+  // Slot changes may leave the selected model unchanged.
+  useAppState(s => s.settings)
+  const configured = hasConfiguredDisplayModel(selection, {
+    architect: getSlotUserModel('architect'),
+    artisan: getSlotUserModel('artisan'),
+    seer: getSlotUserModel('seer'),
+    clerk: getSlotUserModel('clerk'),
+  }, process.env)
+  return configured ? model : null
 }

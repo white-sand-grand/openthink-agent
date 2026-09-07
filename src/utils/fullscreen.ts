@@ -122,14 +122,14 @@ export function _resetTmuxControlModeProbeForTesting(): void {
  * opt in).
  */
 export function isFullscreenEnvEnabled(): boolean {
+  // Explicitly disabling the alternate buffer is a hard constraint.
+  if (isEnvTruthy(process.env.OPENTHINK_DISABLE_ALTERNATE_SCREEN)) return false
+  // An explicit /tui choice overrides the startup renderer preference.
+  if (rendererModeOverride) return rendererModeOverride === 'fullscreen'
   // Explicit user opt-out always wins.
   if (isEnvDefinedFalsy(process.env.OPENTHINK_NO_FLICKER)) return false
   // Explicit opt-in overrides auto-detection (escape hatch).
   if (isEnvTruthy(process.env.OPENTHINK_NO_FLICKER)) return true
-  // Upstream 2.1.132 CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN equivalent.
-  if (isEnvTruthy(process.env.OPENTHINK_DISABLE_ALTERNATE_SCREEN)) return false
-  // /tui in-session choice beats every auto-detection below.
-  if (rendererModeOverride) return rendererModeOverride === 'fullscreen'
   // Auto-disable under tmux -CC: alt-screen + mouse tracking corrupts
   // terminal state on double-click and mouse wheel is dead.
   if (isTmuxControlMode()) {
