@@ -7,7 +7,7 @@ import { useSetPromptOverlay } from '../../context/promptOverlayContext.js';
 import type { VerificationStatus } from '../../hooks/useApiKeyVerification.js';
 import type { IDESelection } from '../../hooks/useIdeSelection.js';
 import { useSettings } from '../../hooks/useSettings.js';
-import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
+import { useConfiguredMainLoopModel, useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { Box, Text } from '../../ink.js';
 import type { MCPServerConnection } from '../../services/mcp/types.js';
@@ -126,6 +126,7 @@ function PromptInputFooter({
   const coordinatorTaskIndex = useAppState(s => s.coordinatorTaskIndex);
   const pillSelected = tasksSelected && (coordinatorTaskCount === 0 || coordinatorTaskIndex < 0);
   const mainLoopModel = useMainLoopModel();
+  const configuredMainLoopModel = useConfiguredMainLoopModel();
 
   // Hide `? for shortcuts` if the user has a custom status line, or during ctrl-r
   const suppressHint = suppressHintFromProps || statusLineShouldDisplay(settings) || isSearching;
@@ -151,7 +152,7 @@ function PromptInputFooter({
           <PromptInputFooterLeftSide exitMessage={exitMessage} vimMode={vimMode} mode={mode} toolPermissionContext={toolPermissionContext} suppressHint={suppressHint} isLoading={isLoading} tasksSelected={pillSelected} teamsSelected={teamsSelected} teammateFooterIndex={teammateFooterIndex} tmuxSelected={tmuxSelected} isPasting={isPasting} isSearching={isSearching} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={onOpenTasksDialog} />
         </Box>
         <Box flexDirection="column" alignItems="flex-end" flexShrink={1} gap={isNarrow ? 0 : 1}>
-          {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && <SessionStatusBar messages={messages} model={mainLoopModel} isLoading={isLoading} onOpenModelPicker={onOpenModelPicker} />}
+          {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && <SessionStatusBar messages={messages} model={mainLoopModel} displayModel={configuredMainLoopModel} isLoading={isLoading} onOpenModelPicker={onOpenModelPicker} />}
           <Box flexShrink={1} gap={1}>
             {isFullscreen ? null : <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} isNarrow={isNarrow} />}
             {"external" === 'ant' && isUndercover() && <Text dimColor>undercover</Text>}
@@ -167,6 +168,7 @@ export default memo(PromptInputFooter);
 type SessionStatusBarProps = {
   messages: Message[];
   model: string;
+  displayModel: string | null;
   isLoading: boolean;
   onOpenModelPicker?: () => void;
 };
@@ -179,6 +181,7 @@ type SessionStatusBarProps = {
 function SessionStatusBar({
   messages,
   model,
+  displayModel,
   isLoading,
   onOpenModelPicker,
 }: SessionStatusBarProps): React.ReactNode {
@@ -211,7 +214,7 @@ function SessionStatusBar({
   const effort = modelSupportsEffort(model)
     ? getDisplayedEffortLevel(model, effortValue)
     : undefined;
-  const modelLabel = renderModelName(model);
+  const modelLabel = displayModel ? renderModelName(displayModel) : 'no model';
   const assistantId = lastAssistant?.uuid ??
     (lastAssistant?.message as { id?: string } | undefined)?.id;
   if (isLoading && !loadingRef.current) {
